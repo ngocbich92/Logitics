@@ -19,7 +19,7 @@ def dsn():
     if os.environ.get("NVL_PG"):
         return os.environ["NVL_PG"]
     try:
-        c = json.loads(CONFIG.read_text(encoding="utf-8"))
+        c = json.loads(CONFIG.read_text(encoding="utf-8-sig"))
         if c.get("backend") == "postgres" and c.get("dsn"):
             return c["dsn"]
     except (OSError, ValueError):
