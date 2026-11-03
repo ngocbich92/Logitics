@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+
+# dữ liệu thật và thông tin kết nối — không đưa lên GitHub
+data/
+*.db
+*.db-wal
+*.db-shm
+.env

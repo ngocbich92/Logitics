@@ -1,0 +1,964 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sổ theo dõi NVL</title>
+<style>
+:root{--bg:#f4f6f9;--card:#fff;--ink:#1c2733;--mut:#6b7885;--line:#dde3ea;--pri:#1f4e78;--ok:#1a7f4b;--warn:#b25e00;--bad:#c0392b}
+@media (prefers-color-scheme:dark){:root{--bg:#12171d;--card:#1a2128;--ink:#e6ebf0;--mut:#93a1af;--line:#2b3641;--pri:#5aa2dd;--ok:#4cc38a;--warn:#e0a040;--bad:#ef6b5b}}
+*{box-sizing:border-box}body{margin:0;font:14px/1.45 "Segoe UI",system-ui,sans-serif;background:var(--bg);color:var(--ink)}
+header{background:var(--pri);color:#fff;padding:12px 20px;display:flex;align-items:center;gap:24px;flex-wrap:wrap}
+header h1{font-size:17px;margin:0;font-weight:600}
+nav button{background:transparent;border:0;color:#fff;opacity:.75;font:inherit;padding:6px 12px;cursor:pointer;border-radius:6px}
+nav button.on{opacity:1;background:rgba(255,255,255,.18)}
+main{padding:16px 20px;max-width:1400px;margin:auto}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.card .k{color:var(--mut);font-size:12px}.card .v{font-size:22px;font-weight:600}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:16px}
+h2{font-size:15px;margin:0 0 10px}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{position:sticky;top:0;background:var(--card);color:var(--mut);font-weight:600}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+.scroll{max-height:62vh;overflow:auto}
+input,select,textarea{font:inherit;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink)}
+button.b{font:inherit;padding:6px 12px;border-radius:6px;border:1px solid var(--pri);background:var(--pri);color:#fff;cursor:pointer}
+button.b.g{background:transparent;color:var(--pri)}button.b.d{border-color:var(--bad);background:transparent;color:var(--bad)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+.tag{display:inline-block;padding:1px 8px;border-radius:10px;font-size:12px;border:1px solid var(--line)}
+.ok{color:var(--ok)}.warn{color:var(--warn)}.bad{color:var(--bad)}.mut{color:var(--mut)}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px}
+.grid2 label{display:flex;flex-direction:column;font-size:12px;color:var(--mut);gap:2px}
+#msg{position:fixed;right:16px;bottom:16px;max-width:420px;padding:10px 14px;border-radius:8px;background:var(--ink);color:var(--bg);display:none;z-index:9}
+tr.sub td{background:rgba(127,127,127,.06);font-size:12px;color:var(--mut)}
+.hide{display:none}
+@media print{header,#side,.noprint,#msg{display:none!important}body{background:#fff}main{padding:0;max-width:none}.panel{border:0}}
+#rvform th,#rvform td{border:1px solid #999}
+#gtb td,#gtb th,#gridbox td{white-space:nowrap;max-width:320px;overflow:hidden;text-overflow:ellipsis}
+
+/* ===== Bố cục: thanh điều hướng dọc, 2 hệ thống ===== */
+body{display:flex;min-height:100vh}
+#side{width:236px;flex:none;background:var(--pri);color:#fff;position:sticky;top:0;height:100vh;overflow-y:auto;padding:12px 0 24px}
+#side .brand{padding:4px 16px 12px;font-weight:600;font-size:15px;line-height:1.3}
+#side .brand small{display:block;font-weight:400;opacity:.7;font-size:11px}
+#side .grp{margin-top:6px}
+#side .gh{display:flex;align-items:center;gap:8px;width:100%;background:rgba(0,0,0,.18);border:0;color:#fff;font:inherit;font-weight:600;font-size:12px;letter-spacing:.04em;text-transform:uppercase;padding:9px 16px;cursor:pointer;text-align:left}
+#side .gh .ar{margin-left:auto;transition:transform .15s}
+#side .grp.closed .ar{transform:rotate(-90deg)}
+#side .grp.closed .items{display:none}
+#side .items button{display:block;width:100%;text-align:left;background:transparent;border:0;border-left:3px solid transparent;color:#fff;opacity:.82;font:inherit;padding:8px 16px 8px 22px;cursor:pointer}
+#side .items button:hover{background:rgba(255,255,255,.1);opacity:1}
+#side .items button.on{background:rgba(255,255,255,.2);border-left-color:#fff;opacity:1;font-weight:600}
+main{flex:1;min-width:0;margin:0;max-width:none;width:100%}
+@media(max-width:820px){body{flex-direction:column}#side{width:auto;height:auto;position:static;padding-bottom:8px}}
+@media print{#side{display:none!important}}
+.bar{height:14px;background:var(--pri);border-radius:3px;min-width:2px}
+.obmodal{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:20;display:flex;align-items:flex-start;justify-content:center;padding:24px;overflow:auto}
+.obmodal .box{background:var(--card);color:var(--ink);border-radius:10px;max-width:1100px;width:100%;padding:16px}
+.obf{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px}
+.obf label{display:flex;flex-direction:column;font-size:12px;color:var(--mut);gap:2px}
+.obf textarea,.obf input{width:100%}
+.tag.logs{border-color:#2f7ec7;color:#2f7ec7}.tag.wh{border-color:#b25e00;color:#b25e00}
+
+.obmodal .box{max-width:1280px}
+.obsec{border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin:10px 0}
+.obsh{font-weight:600;margin-bottom:6px;color:var(--pri)}
+.obg{display:grid;gap:8px}
+.obg label{display:flex;flex-direction:column;font-size:12px;color:var(--mut);gap:2px;min-width:0}
+.obg label.tall{grid-column:span 1}
+.obg input,.obg textarea{width:100%}
+.obg.compact input{font-size:12px;padding:4px 6px}
+</style>
+</head>
+<body>
+<aside id="side"><div class="brand">Polarium Logistics<small>Hệ thống quản lý vận hành</small></div><nav id="nav"></nav></aside>
+<main id="main"></main>
+<div id="msg"></div>
+<script>
+const $=s=>document.querySelector(s);
+const fmt=n=>n==null?'':Number(n).toLocaleString('vi-VN',{maximumFractionDigits:4});
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const KIND={CO:'C/O',XK:'Xuất khẩu',MDK:'Mục đích khác',TH:'Tiêu huỷ'};
+function toast(t,bad){const m=$('#msg');m.textContent=t;m.style.background=bad?'var(--bad)':'var(--ink)';m.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>m.style.display='none',bad?7000:3500)}
+async function api(p,opt){const r=await fetch(p,opt);const j=await r.json();if(!r.ok)throw new Error(j.error||r.status);return j}
+const post=(p,o)=>api(p,{method:'POST',body:JSON.stringify(o||{})});
+async function upload(p,file){return api(p,{method:'POST',body:await file.arrayBuffer()})}
+/* ===== Bảng có lọc theo từng cột ===== */
+let stockMode='line';
+const HINT={number:'vd: >100, 5..20, =3',date:'2026-09 hoặc 01/09/2026..30/09/2026',text:'chứa · =chính xác · !loại trừ · a|b'};
+function parseNum(s){return parseFloat(String(s).replace(',','.'))}
+function matchNum(v,t){t=t.trim();if(!t)return true;if(v==null||v==='')return false;let m;
+  if(m=t.match(/^(-?[\d.,]+)\s*\.\.\s*(-?[\d.,]+)$/))return v>=parseNum(m[1])&&v<=parseNum(m[2]);
+  if(m=t.match(/^(>=|<=|>|<|=)\s*(-?[\d.,]+)$/)){const x=parseNum(m[2]);return {'>=':v>=x,'<=':v<=x,'>':v>x,'<':v<x,'=':v==x}[m[1]]}
+  if(/^-?[\d.,]+$/.test(t))return v==parseNum(t);return String(v).includes(t)}
+const fold=s=>String(s??'').toLowerCase().replace(/đ/g,'d').normalize('NFD').replace(/[̀-ͯ]/g,'');
+function matchText(v,t){t=t.trim();if(!t)return true;const f=fold(v);
+  if(t[0]==='=')return t.slice(1).split('|').some(x=>f===fold(x));
+  if(t[0]==='!')return !t.slice(1).split('|').filter(x=>x.trim()).some(x=>f.includes(fold(x)));
+  return t.split('|').filter(x=>x.trim()).some(x=>f.includes(fold(x)))}
+function miniTable(box,cols,rows,defSort,opt){
+  opt=opt||{};const PG=opt.pageSize||200;
+  const S={f:{},sort:defSort||null,dir:'desc',page:1};
+  box.innerHTML=`<div class="row"><span class="mut" id="mt_n"></span>${opt.csv?`<button class="b g" id="mt_csv">⬇ Xuất Excel/CSV (đang lọc)</button>`:''}<span id="mt_pg"></span></div><div class="scroll"><table><thead><tr>${cols.map((c,i)=>`<th class="${c.t==='number'?'n':''}" style="cursor:pointer;white-space:nowrap" data-s="${i}">${esc(c.l)}</th>`).join('')}</tr>
+   <tr>${cols.map((c,i)=>`<th><input data-f="${i}" placeholder="${HINT[c.t]||HINT.text}" style="width:100%;min-width:70px;font-size:12px"></th>`).join('')}</tr></thead><tbody></tbody></table></div>`;
+  const filtered=()=>{let r=rows.filter(x=>cols.every((c,i)=>{const t=S.f[i];return !t||(c.t==='number'?matchNum(x[c.k],t):matchText(x[c.k],t))}));
+    if(S.sort){const c=cols.find(c=>c.k===S.sort);r=[...r].sort((a,b)=>{const x=a[c.k],y=b[c.k];return (x==null)-(y==null)||(x>y?1:x<y?-1:0)}); if(S.dir==='desc')r.reverse()}return r};
+  const draw=()=>{const r=filtered();const pages=Math.max(1,Math.ceil(r.length/PG));if(S.page>pages)S.page=pages;
+    $('#mt_n').textContent=`${fmt(r.length)} / ${fmt(rows.length)} dòng`;
+    $('#mt_pg').innerHTML=pages>1?`<button class="b g" data-p="-1" ${S.page<=1?'disabled':''}>‹</button> Trang ${S.page}/${pages} <button class="b g" data-p="1" ${S.page>=pages?'disabled':''}>›</button>`:'';
+    box.querySelectorAll('[data-p]').forEach(b=>b.onclick=()=>{S.page+=+b.dataset.p;draw()});
+    box.querySelector('tbody').innerHTML=r.slice((S.page-1)*PG,S.page*PG).map(x=>'<tr'+(opt.rowAttr?opt.rowAttr(x):'')+'>'+cols.map(c=>`<td class="${c.t==='number'?'n':''}" title="${esc(x[c.k]??'')}">${c.b?'<b>':''}${c.t==='number'?fmt(x[c.k]):esc(String(x[c.k]??'').slice(0,c.w?90:60))}${c.b?'</b>':''}</td>`).join('')+'</tr>').join('')};
+  box.querySelectorAll('[data-f]').forEach(i=>i.addEventListener('input',()=>{S.f[i.dataset.f]=i.value;S.page=1;draw()}));
+  box.querySelectorAll('[data-s]').forEach(h=>h.addEventListener('click',()=>{const k=cols[h.dataset.s].k;S.dir=(S.sort===k&&S.dir==='desc')?'asc':'desc';S.sort=k;draw()}));
+  if(opt.csv)$('#mt_csv').onclick=()=>{const r=filtered();const q=v=>`"${String(v??'').replace(/"/g,'""')}"`;
+    const csv='﻿'+[cols.map(c=>q(c.l)).join(','),...r.map(x=>cols.map(c=>c.t==='number'&&x[c.k]!=null?x[c.k]:q(x[c.k])).join(','))].join('\r\n');
+    const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));a.download=(opt.csv||'du-lieu')+'.csv';a.click()};
+  draw();
+}
+
+/* ===== Lưới server-side: mọi cột lọc / sắp xếp / xuất Excel ===== */
+const G={raw:false,def:[],filters:{},q:'',sort:'',dir:'asc',page:1,size:100,cols:null,all:[],total:0};
+const gKey=()=>G.raw?'nvlColsRaw':'nvlCols3';
+function resetG(raw){if(G.raw!==raw){G.raw=raw;G.filters={};G.q='';G.sort='';G.page=1;G.cols=null}}
+async function mountGrid(box){
+  const meta=await api('/api/grid/columns'+(G.raw?'?raw=1':''));G.all=meta.columns;G.def=meta.default;
+  try{G.cols=JSON.parse(localStorage[gKey()]||'null')}catch(e){G.cols=null}
+  if(!G.cols||!G.cols.every(c=>G.all.some(a=>a.name===c)))G.cols=meta.default.filter(c=>G.all.some(a=>a.name===c));
+  box.innerHTML=`<div class="row"><input id="gq" placeholder="Tìm nhanh trong mọi cột…" size="30" value="${esc(G.q)}">
+    <details><summary class="b g" style="display:inline-block;list-style:none;cursor:pointer;padding:6px 12px;border:1px solid var(--pri);border-radius:6px;color:var(--pri)">Chọn cột (${G.cols.length}/${G.all.length})</summary>
+     <div style="position:absolute;z-index:5;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:10px;max-height:60vh;overflow:auto;width:340px">
+     <input id="cq" placeholder="Tìm cột…" style="width:100%;margin-bottom:6px"><div id="clist"></div></div></details>
+    <select id="gsz"><option>50</option><option selected>100</option><option>200</option><option>500</option></select>
+    ${G.raw?'<select id="gton" style="display:none"></select>':'<select id="gton" title="Lọc theo số lượng tồn"><option value="">Tồn: tất cả</option><option value=">0">Chỉ còn tồn</option><option value="=0">Đã hết</option></select>'}
+    <button class="b g" onclick="gAllCols(true)">Hiện tất cả cột</button>${G.raw?'':'<button class="b g" onclick="gAllCols(false)">Cột chính</button>'}<button class="b g" onclick="gClear()">Xoá lọc</button><button class="b g" onclick="gExport()">⬇ Xuất Excel (kết quả đang lọc)</button>
+    <span class="mut" id="gcnt"></span></div>
+   <div class="scroll" id="gtb"></div><div class="row" id="gpg" style="margin-top:8px"></div>`;
+  $('#gsz').value=G.size;
+  const cl=()=>{const t=fold($('#cq').value);$('#clist').innerHTML=G.all.filter(c=>fold(c.name).includes(t)).map(c=>`<label style="display:block"><input type="checkbox" data-c="${esc(c.name)}" ${G.cols.includes(c.name)?'checked':''}> ${esc(c.name)} <span class="mut">${c.type}</span></label>`).join('');
+    $('#clist').querySelectorAll('input').forEach(i=>i.onchange=()=>{const n=i.dataset.c;G.cols=i.checked?[...G.cols,n]:G.cols.filter(x=>x!==n);G.cols=G.all.map(a=>a.name).filter(x=>G.cols.includes(x));localStorage[gKey()]=JSON.stringify(G.cols);G.cols.length||G.cols.push(n);gLoad(true)})};
+  $('#cq').oninput=cl;cl();
+  let tm;$('#gq').oninput=e=>{clearTimeout(tm);tm=setTimeout(()=>{G.q=e.target.value;G.page=1;gLoad()},350)};
+  $('#gsz').onchange=e=>{G.size=+e.target.value;G.page=1;gLoad()};
+  $('#gton').onchange=e=>{if(e.target.value)G.filters['Tồn (hệ thống)']=e.target.value;else delete G.filters['Tồn (hệ thống)'];G.page=1;gLoad(true)};
+  await gLoad(true);
+}
+function gParams(extra){return new URLSearchParams({filters:JSON.stringify(G.filters),q:G.q,sort:G.sort,dir:G.dir,page:G.page,size:G.size,cols:JSON.stringify(G.cols),...extra}).toString()}
+async function gLoad(rebuildHead){
+  const r=await api('/api/grid?'+gParams());G.total=r.total;
+  const types=Object.fromEntries(G.all.map(c=>[c.name,c.type]));
+  const head=()=>`<table><thead><tr>${r.columns.map(c=>`<th class="${types[c]==='number'?'n':''}" style="cursor:pointer;white-space:nowrap" data-s="${esc(c)}">${esc(c)}${G.sort===c?(G.dir==='asc'?' ▲':' ▼'):''}</th>`).join('')}</tr>
+    <tr>${r.columns.map((c,i)=>`<th><input data-f="${esc(c)}" list="dl${i}" value="${esc(G.filters[c]||'')}" placeholder="${HINT[types[c]]}" style="width:100%;min-width:90px;font-size:12px"><datalist id="dl${i}"></datalist></th>`).join('')}</tr></thead><tbody id="gbody"></tbody></table>`;
+  if(rebuildHead||!$('#gbody')){$('#gtb').innerHTML=head();
+    $('#gtb').querySelectorAll('[data-f]').forEach(i=>{let t;i.addEventListener('input',()=>{clearTimeout(t);t=setTimeout(()=>{G.filters[i.dataset.f]=i.value;G.page=1;gLoad()},400)});
+      i.addEventListener('focus',async()=>{if(i.list.dataset.ok)return;i.list.dataset.ok=1;const d=await api('/api/grid/distinct?'+gParams({col:i.dataset.f}));i.list.innerHTML=d.slice(0,200).map(x=>`<option value="${esc(x.v)}">${x.n}</option>`).join('')})});
+    $('#gtb').querySelectorAll('[data-s]').forEach(h=>h.addEventListener('click',()=>{const c=h.dataset.s;G.dir=(G.sort===c&&G.dir==='asc')?'desc':'asc';G.sort=c;gLoad(true)}))}
+  const ti=r.columns.map(c=>types[c]);
+  const ri=r.columns.indexOf('Tồn (hệ thống)');
+  $('#gbody').innerHTML=r.rows.map((row,k)=>`<tr${ri>=0&&row[ri]<=0?' style="opacity:.55"':''}>`+row.map((v,i)=>r.columns[i]==='Ghi chú (nhập tay)'?
+    `<td><input class="gnote" data-id="${r.ids[k]}" value="${esc(v||'')}" placeholder="…" style="min-width:220px;font-size:12px"></td>`:
+    `<td class="${ti[i]==='number'?'n':''}" title="${v==null?'':esc(v)}">${v==null?'':ti[i]==='number'?fmt(v):esc(String(v).slice(0,300))}</td>`).join('')+'</tr>').join('')||`<tr><td class=mut>Không có dòng nào khớp bộ lọc</td></tr>`;
+  $('#gbody').querySelectorAll('.gnote').forEach(inp=>inp.onchange=async()=>{try{await post(`/api/lines/${inp.dataset.id}/note`,{note:inp.value});toast('Đã lưu ghi chú')}catch(e){toast(e.message,1)}});
+  const pages=Math.max(1,Math.ceil(r.total/G.size));
+  $('#gcnt').textContent=G.raw?`${fmt(r.total)} dòng khớp`:`${fmt(r.total)} dòng khớp · ${fmt(r.summary.con_ton)} còn tồn · ${fmt(r.summary.het)} đã hết · ${fmt(r.summary.da_dung)} đã bị trừ lùi`;
+  $('#gton').value=G.filters['Tồn (hệ thống)']||'';
+  $('#gpg').innerHTML=`<button class="b g" ${G.page<=1?'disabled':''} onclick="G.page--;gLoad()">‹</button><span>Trang ${G.page}/${pages}</span><button class="b g" ${G.page>=pages?'disabled':''} onclick="G.page++;gLoad()">›</button>`;
+}
+function gAllCols(all){G.cols=all?G.all.map(c=>c.name):G.def.filter(c=>G.all.some(a=>a.name===c));localStorage[gKey()]=JSON.stringify(G.cols);go(cur)}
+function gClear(){G.filters={};G.q='';G.page=1;const q=$('#gq');if(q)q.value='';gLoad(true)}
+function gExport(){location.href='/export/grid.xlsx?'+gParams()}
+
+/* ===== Nạp lô cũ theo tờ khai chỉ định ===== */
+let LOT=null;
+const lotOpts=()=>({stage:LOT,kind:$('#lkind').value,frozen:$('#lfrozen').checked,replace:$('#lrepl').checked});
+async function lotPreview(){const f=$('#flot').files[0];if(!f)return toast('Chọn file trước',1);
+  $('#lotlog').innerHTML='<p class="warn">Đang đọc file…</p>';
+  try{const r=await upload('/api/lots/preview',f);LOT=r.stage;await lotCheck()}catch(e){$('#lotlog').innerHTML='';toast(e.message,1)}}
+async function lotCheck(){
+  const r=await post('/api/lots/apply',{...lotOpts(),dry:true});
+  const err=r.problems.filter(p=>p.level!=='warn'),warn=r.problems.filter(p=>p.level==='warn');
+  const row=p=>`<tr><td class=n>${p.row}</td><td>${esc(p.lot)}</td><td>${esc(p.so_tk)}</td><td>${esc(p.ma_hang)}</td><td class=n>${fmt(p.qty)}</td><td class="${p.level==='warn'?'warn':'bad'}">${esc(p.msg)}</td></tr>`;
+  const tbl=(t,a,c)=>a.length?`<p class="${c}"><b>${t} (${a.length})</b></p><div class="scroll" style="max-height:30vh"><table><tr><th class=n>Dòng Excel</th><th>Lô</th><th>Số TK nhập</th><th>Mã hàng</th><th class=n>SL</th><th>Vấn đề</th></tr>${a.slice(0,300).map(row).join('')}</table></div>`:'';
+  $('#lotlog').innerHTML=`<div class="panel" style="border-color:var(--warn)"><p>Kiểm tra (chưa lưu): <b>${r.lots.filter(l=>l.created).length}</b> lô sẽ được tạo, <b>${fmt(r.ok_rows)}</b>/${fmt(r.rows)} dòng hợp lệ.
+   ${r.n_errors?`<span class="bad"><b>${r.n_errors} dòng lỗi sẽ bị bỏ qua</b></span> — sửa file rồi tải lại, hoặc lưu phần hợp lệ rồi nạp bổ sung phần còn lại (dùng "Thay thế lô cùng mã").`:'<span class="ok">Không có lỗi.</span>'}</p>
+   <table><tr><th>Lô</th><th>Loại</th><th class=n>Dòng</th><th class=n>Hợp lệ</th><th></th></tr>${r.lots.map(l=>`<tr><td>${esc(l.lot)}</td><td>${KIND[l.kind]}</td><td class=n>${l.rows}</td><td class=n>${l.ok_rows}</td><td class=mut>${l.replaced?'thay thế lô cũ':''}${l.created?'':' (không tạo — không có dòng hợp lệ)'}</td></tr>`).join('')}</table>
+   ${tbl('Lỗi',err,'bad')}${tbl('Cảnh báo (vẫn lưu)',warn,'warn')}
+   <div class="row" style="margin-top:8px"><button class="b" onclick="lotCommit()" ${r.ok_rows?'':'disabled'}>Xác nhận &amp; lưu các dòng hợp lệ</button><button class="b g" onclick="lotCheck()">Kiểm tra lại (sau khi đổi tuỳ chọn)</button><button class="b d" onclick="LOT=null;$('#lotlog').innerHTML=''">Huỷ</button></div></div>`}
+async function lotCommit(){if(!confirm('Lưu các lô hợp lệ? Phần trừ sẽ ghi thẳng vào tờ khai nhập chỉ định.'))return;
+  try{const r=await post('/api/lots/apply',{...lotOpts(),dry:false});LOT=null;
+    $('#lotlog').innerHTML=`<p class="ok"><b>Đã lưu ${r.lots.filter(l=>l.created).length} lô</b> (${fmt(r.ok_rows)} dòng)${r.n_errors?`, bỏ qua ${r.n_errors} dòng lỗi`:''}. Xem ở tab Lô xuất / Tồn kho.</p>`;toast('Đã lưu')}catch(e){toast(e.message,1)}}
+
+/* ===== Nạp tờ khai: xem trước + xác nhận dòng trùng ===== */
+let PV=null;
+let DBTOKEN=null;
+async function dbPick(){
+  const f=$('#fdb').files[0];DBTOKEN=null;$('#dbgo').disabled=true;if(!f)return;
+  $('#dbsheet').innerHTML='<span class="warn">Đang tải file lên và đọc danh sách sheet…</span>';
+  try{
+    const r=await upload('/api/import/file',f);DBTOKEN=r.token;
+    $('#dbsheet').innerHTML=`<label>Sheet chứa dữ liệu: <select id="fsheet">${r.sheets.map(s=>`<option value="${esc(s.name)}" ${s.name===r.default?'selected':''}>${esc(s.name)}${s.looks_like_data?' ✓ (có cột Số TK, Mã hàng, Số lượng)':''}</option>`).join('')}</select></label>`;
+    $('#dbgo').disabled=false;
+    if(!r.sheets.some(s=>s.looks_like_data))toast('Không sheet nào có đủ cột Số TK / Mã hàng / Số lượng — kiểm tra lại file',1);
+  }catch(e){$('#dbsheet').innerHTML='';toast(e.message,1)}
+}
+async function dbPreview(){
+  const f=$('#fdb').files[0];if(!f||!DBTOKEN)return toast('Chọn file và sheet trước',1);
+  const box=$('#uplog');box.innerHTML='<p class="warn">Đang đọc sheet và phân tích… (file lớn mất khoảng 30–60 giây, đừng đóng trang)</p>';
+  try{
+    const full=$('#full').checked?1:0;
+    const r=await post(`/api/import/database/preview?token=${DBTOKEN}&sheet=${encodeURIComponent($('#fsheet').value)}&filename=${encodeURIComponent(f.name)}&full=${full}`);
+    PV={stage:r.stage,groups:r.groups,drop:new Set(r.drop),full:!!full,diff:r.diff,kind:'',q:''};
+    renderReview();
+  }catch(e){box.innerHTML='';toast(e.message,1)}
+}
+function reviewStats(){
+  const g=PV.groups;return {n:g.length,ident:g.filter(x=>x.kind==='identical').length,diffs:g.filter(x=>x.kind==='differs').length,
+    extra:g.reduce((a,x)=>a+x.n-1,0),dropRows:g.filter(x=>PV.drop.has(x.key)).reduce((a,x)=>a+x.n-1,0),
+    unseen:g.filter(x=>x.prior==null).length}}
+function filteredGroups(){const t=fold(PV.q);return PV.groups.filter(g=>(!PV.kind||g.kind===PV.kind)&&(!t||fold(g.so_tk+' '+g.ma_hang+' '+(g.ten_hang||'')).includes(t)))}
+function renderReview(){
+  const s=reviewStats(),d=PV.diff,box=$('#uplog');
+  const list=filteredGroups();
+  box.innerHTML=`<div class="panel" style="border-color:var(--warn)">
+   <h2>Xem trước — chưa lưu gì vào hệ thống</h2>
+   ${s.n?`<p class="warn"><b>⚠ Phát hiện ${fmt(s.n)} nhóm dòng trùng</b> (${fmt(s.extra)} dòng thừa): ${fmt(s.ident)} nhóm <b>giống hệt mọi cột</b> (thường là nhập trùng), ${fmt(s.diffs)} nhóm trùng Số TK + Mã hàng + Số lượng + Đơn giá nhưng <b>khác ở vài cột</b> (có thể là các dòng hàng khác nhau thật). Mặc định <b>giữ nguyên tất cả</b> — hãy chọn nhóm nào cần loại bỏ phần thừa.</p>`:'<p class="ok">Không phát hiện dòng trùng trong file.</p>'}
+   <div id="pvdiff"></div>
+   ${s.n?`<div class="row"><button class="b g" onclick="pvSet('identical',true)">Loại bỏ phần thừa của mọi nhóm GIỐNG HỆT</button><button class="b g" onclick="pvAll(false)">Giữ nguyên tất cả</button>
+     <span class="mut">Lọc danh sách:</span><input id="pvq" placeholder="Số TK / mã hàng / tên hàng" value="${esc(PV.q)}" size="26">
+     <select id="pvk"><option value="">Mọi loại</option><option value="identical" ${PV.kind==='identical'?'selected':''}>Giống hệt</option><option value="differs" ${PV.kind==='differs'?'selected':''}>Khác ở vài cột</option></select>
+     <button class="b g" onclick="pvFiltered(true)">Loại bỏ thừa (${fmt(list.length)} nhóm đang lọc)</button><button class="b g" onclick="pvFiltered(false)">Giữ (đang lọc)</button></div>
+   <div class="scroll" style="max-height:44vh"><table><tr><th>Quyết định</th><th>Số TK</th><th>Mã hàng</th><th class=n>Số lượng</th><th class=n>Đơn giá</th><th class=n>Số dòng</th><th>Loại</th><th>Khác ở cột</th><th>Đã xác nhận trước</th></tr>`+
+    list.slice(0,300).map(g=>`<tr><td><select data-k="${esc(g.key)}"><option value="keep" ${PV.drop.has(g.key)?'':'selected'}>Giữ cả ${g.n} dòng</option><option value="drop" ${PV.drop.has(g.key)?'selected':''}>Chỉ giữ 1, bỏ ${g.n-1}</option></select></td>
+     <td>${esc(g.so_tk)}</td><td title="${esc(g.ten_hang)}">${esc(g.ma_hang)}</td><td class=n>${fmt(g.qty)}</td><td class=n>${fmt(g.don_gia)}</td><td class=n>${g.n}</td>
+     <td>${g.kind==='identical'?'<span class="tag bad">Giống hệt</span>':'<span class="tag warn">Khác cột</span>'}</td><td class="mut">${esc(g.diff_cols.join(', '))}</td><td class="mut">${g.prior==null?'—':g.prior===1?'Đã chọn bỏ thừa':'Đã chọn giữ'}</td></tr>`).join('')+
+    (list.length>300?`<tr><td colspan=9 class=mut>Hiển thị 300/${fmt(list.length)} nhóm — dùng ô lọc để thu hẹp (các nút "đang lọc" áp dụng cho toàn bộ ${fmt(list.length)} nhóm).</td></tr>`:'')+`</table></div>`:''}
+   <div class="row" style="margin-top:10px"><button class="b" onclick="pvCommit()">Xác nhận &amp; lưu vào hệ thống</button><button class="b d" onclick="PV=null;$('#uplog').innerHTML=''">Huỷ</button>
+   <span class="mut">Đang chọn: loại bỏ <b>${fmt(s.dropRows)}</b> dòng thừa / giữ nguyên ${fmt(s.extra-s.dropRows)} dòng trùng</span></div></div>`;
+  pvDiff();
+  const q=$('#pvq');if(q){q.oninput=()=>{clearTimeout(q.t);q.t=setTimeout(()=>{PV.q=q.value;renderReview();$('#pvq').focus()},350)};$('#pvk').onchange=e=>{PV.kind=e.target.value;renderReview()}}
+  box.querySelectorAll('select[data-k]').forEach(sel=>sel.onchange=()=>{sel.value==='drop'?PV.drop.add(sel.dataset.k):PV.drop.delete(sel.dataset.k);renderReview()});
+}
+function pvAll(drop){PV.drop=new Set(drop?PV.groups.map(g=>g.key):[]);renderReview()}
+function pvSet(kind,drop){PV.groups.filter(g=>g.kind===kind).forEach(g=>drop?PV.drop.add(g.key):PV.drop.delete(g.key));renderReview()}
+function pvFiltered(drop){filteredGroups().forEach(g=>drop?PV.drop.add(g.key):PV.drop.delete(g.key));renderReview()}
+let pvT;
+function pvDiff(){
+  const show=d=>{const e=$('#pvdiff');if(!e)return;e.innerHTML=`<p>Kết quả nếu lưu: file còn <b>${fmt(d.rows_in_file)}</b> dòng${d.duplicates_dropped?` (đã bỏ ${fmt(d.duplicates_dropped)} dòng trùng)`:''} → thêm <b>${fmt(d.added)}</b>, cập nhật <b>${fmt(d.updated)}</b>, không đổi ${fmt(d.unchanged)}, xoá <b>${fmt(d.removed)}</b>${d.kept_because_already_allocated?`, <span class="warn">giữ lại ${fmt(d.kept_because_already_allocated)} dòng không còn trong file vì đã bị trừ lùi</span>`:''}.</p>`};
+  if(PV.diffKey===[...PV.drop].sort().join()){show(PV.diff);return}
+  clearTimeout(pvT);pvT=setTimeout(async()=>{const key=[...PV.drop].sort().join();
+    try{PV.diff=await post('/api/import/database/diff',{stage:PV.stage,drop:[...PV.drop],full:PV.full});PV.diffKey=key;show(PV.diff)}catch(e){toast(e.message,1)}},500);
+}
+async function pvCommit(){
+  const s=reviewStats();
+  const msg=s.n?`Lưu dữ liệu?\n\n• Loại bỏ ${s.dropRows} dòng thừa\n• Giữ nguyên ${s.extra-s.dropRows} dòng trùng${s.unseen?`\n• ${s.unseen} nhóm trùng mới chưa từng được xác nhận`:''}`:'Lưu dữ liệu vào hệ thống?';
+  if(!confirm(msg))return;
+  $('#uplog').innerHTML='<p class="warn">Đang lưu…</p>';
+  try{const d=await post('/api/import/database/commit',{stage:PV.stage,drop:[...PV.drop],full:PV.full});PV=null;
+    $('#uplog').innerHTML=`<p class="ok"><b>Đã lưu.</b> ${fmt(d.rows_in_file)} dòng — thêm <b>${fmt(d.added)}</b>, cập nhật <b>${fmt(d.updated)}</b>, không đổi ${fmt(d.unchanged)}, xoá <b>${fmt(d.removed)}</b>${d.duplicates_dropped?`, bỏ ${fmt(d.duplicates_dropped)} dòng trùng`:''}${d.kept_because_already_allocated?`, <span class="warn">giữ lại ${d.kept_because_already_allocated} dòng đã bị trừ lùi nhưng không còn trong file</span>`:''}.</p>`;
+    toast('Đã lưu dữ liệu')}catch(e){toast(e.message,1);renderReview()}
+}
+
+/* ===== BOM ===== */
+let BD=null,preBom=null;
+function bomDraw(){
+  const L=BD.lines;
+  $('#bomlines').innerHTML=`<tr><th>#</th><th>Mã hàng (NVL)</th><th>Item description</th><th>Unit</th><th class=n>Định mức / 1 thành phẩm</th><th class=n>Tồn hiện tại</th><th class=n>Lô tối đa</th><th></th></tr>`+
+   L.map((l,i)=>`<tr><td>${i+1}</td><td><input data-i="${i}" data-f="ma_hang" value="${esc(l.ma_hang||'')}" size="14"></td><td><input data-i="${i}" data-f="mo_ta" value="${esc(l.mo_ta||'')}" size="40"></td>
+    <td><input data-i="${i}" data-f="dvt" value="${esc(l.dvt||'')}" size="7"></td><td class=n><input data-i="${i}" data-f="dinh_muc" value="${l.dinh_muc??''}" size="9" style="text-align:right"></td>
+    <td class=n>${l.ton==null?'':fmt(l.ton)}</td><td class="n ${l.lo_toi_da===0?'bad':''}">${l.lo_toi_da==null?'':fmt(l.lo_toi_da)}</td><td><button class="b g" onclick="bomDelRow(${i})">✕</button></td></tr>`).join('');
+  $('#bomlines').querySelectorAll('input').forEach(inp=>inp.oninput=()=>{BD.lines[+inp.dataset.i][inp.dataset.f]=inp.value});
+}
+function bomAddRow(){BD.lines.push({ma_hang:'',mo_ta:'',dvt:'',dinh_muc:''});bomDraw()}
+function bomDelRow(i){BD.lines.splice(i,1);bomDraw()}
+function bomPaste(){$('#bompaste').innerHTML=`<div class="panel"><p class="mut">Mỗi dòng: <b>Mã hàng ⇥ Mô tả (tuỳ chọn) ⇥ Định mức ⇥ ĐVT (tuỳ chọn)</b></p><textarea id="bp" rows="6" style="width:100%"></textarea>
+  <div class="row"><button class="b" onclick="bomPasteApply()">Thêm vào BOM</button><button class="b g" onclick="$('#bompaste').innerHTML=''">Đóng</button></div></div>`}
+function bomPasteApply(){
+  $('#bp').value.split('\n').map(l=>l.split('\t').map(x=>x.trim())).filter(c=>c[0]).forEach(c=>{
+    const nums=c.map((x,i)=>[i,parseFloat(x.replace(/,/g,''))]).filter(([i,v])=>i>0&&!isNaN(v)&&/^[\d.,]+$/.test(c[i]));
+    if(!nums.length)return;const qi=nums[0][0];BD.lines.push({ma_hang:c[0],mo_ta:qi>=2?c[1]:'',dinh_muc:nums[0][1],dvt:c[qi+1]||''})});
+  $('#bompaste').innerHTML='';bomDraw()}
+async function bomSave(){
+  try{await post(`/api/boms/${evId}/save`,{ten_hang:$('#b_ten').value,hs6:$('#b_hs').value,dvt:$('#b_dvt').value,lines:BD.lines.filter(l=>(l.ma_hang||'').trim())});toast('Đã lưu BOM');go('bom',evId)}catch(e){toast(e.message,1)}}
+async function bomDel(){if(!confirm('Xoá BOM này? (các lô C/O đã tạo không bị ảnh hưởng)'))return;await post(`/api/boms/${evId}/delete`);go('bom')}
+function bomNew(){$('#bomnew').innerHTML=`<div class="panel"><div class="row"><input id="bn_tp" placeholder="Mã thành phẩm, vd 800-00332"><button class="b" onclick="bomCreate()">Tạo</button><button class="b g" onclick="$('#bomnew').innerHTML=''">Huỷ</button></div></div>`}
+async function bomCreate(){try{const r=await post('/api/boms',{ma_tp:$('#bn_tp').value});go('bom',r.id)}catch(e){toast(e.message,1)}}
+async function bomUpload(dry){
+  const f=$('#fbom').files[0];if(!f)return toast('Chọn file trước',1);
+  try{const r=await upload('/api/boms/upload?dry='+(dry?1:0),f);
+    const err=r.problems.filter(p=>p.level!=='warn'),warn=r.problems.filter(p=>p.level==='warn');
+    const tbl=(t,a,c)=>a.length?`<p class="${c}"><b>${t} (${a.length})</b></p><div class="scroll" style="max-height:25vh"><table><tr><th class=n>Dòng</th><th>Thành phẩm</th><th>Mã hàng</th><th>Vấn đề</th></tr>${a.slice(0,200).map(p=>`<tr><td class=n>${p.row}</td><td>${esc(p.ma_tp)}</td><td>${esc(p.ma_hang)}</td><td>${esc(p.msg)}</td></tr>`).join('')}</table></div>`:'';
+    $('#bomlog').innerHTML=dry?`<div class="panel" style="border-color:var(--warn)"><p>Kiểm tra (chưa lưu)${r.sheets&&r.sheets.length?` — đọc từ sheet: <b>${r.sheets.map(esc).join(", ")}</b>`:""}: <b>${r.boms.length}</b> thành phẩm — ${r.boms.map(b=>`${esc(b.ma_tp)} (${b.lines} dòng${b.updated?', thay BOM cũ':', mới'})`).join('; ')}</p>${tbl('Lỗi — dòng bị bỏ qua',err,'bad')}${tbl('Cảnh báo',warn,'warn')}
+      <div class="row"><button class="b" onclick="bomUpload(false)" ${r.boms.length?'':'disabled'}>Xác nhận &amp; lưu</button><button class="b d" onclick="$('#bomlog').innerHTML=''">Huỷ</button></div></div>`:
+      `<p class="ok"><b>Đã lưu ${r.boms.length} BOM.</b></p>`;
+    if(!dry){toast('Đã lưu BOM');go('bom')}
+  }catch(e){toast(e.message,1)}}
+
+/* ===== Tỷ giá hải quan theo tuần ===== */
+async function fxPanel(){
+  const t=await api('/api/fx');
+  const box=document.createElement('div');box.className='panel';box.id='fxbox';
+  box.innerHTML=`<h2>Tỷ giá hải quan USD/VNĐ (theo tuần)</h2>
+   <p class="mut">Đơn giá CIF (USD) = Đơn giá tính thuế (VNĐ) ÷ tỷ giá của <b>tuần chứa ngày đăng ký tờ khai nhập</b> (thứ Hai–Chủ nhật, cùng một tỷ giá). Hệ thống tự suy ra tỷ giá từng tuần từ cột "Tỷ giá VNĐ" của các dòng USD trong dữ liệu tờ khai; tỷ giá bạn nhập dưới đây (lấy từ website hải quan) <b>được ưu tiên hơn</b>.</p>
+   <div class="row"><label>Từ ngày <input id="fx_f" placeholder="dd/mm/yyyy" size="11"></label><label>Đến ngày <input id="fx_t" placeholder="dd/mm/yyyy" size="11"></label><label>Tỷ giá USD/VNĐ <input id="fx_u" size="10"></label><button class="b" onclick="fxAdd()">Thêm / sửa</button>
+   <input type="file" id="fx_file" accept=".xlsx,.xlsm"><button class="b g" onclick="fxUpload()">Nạp từ Excel (Từ ngày · Đến ngày · Tỷ giá USD)</button></div>
+   <div id="fxtb"></div>`;
+  $('#main').appendChild(box);
+  t.forEach(r=>{r.nguon=r.source;r.canh_bao=r.warn||''});
+  miniTable($('#fxtb'),[{k:'from',l:'Từ ngày',t:'text'},{k:'to',l:'Đến ngày',t:'text'},{k:'usd',l:'USD/VNĐ',t:'number',b:1},{k:'nguon',l:'Nguồn',t:'text'},{k:'lines',l:'Số dòng dữ liệu',t:'number'},{k:'canh_bao',l:'Cảnh báo',t:'text'}],t,null,{pageSize:60,rowAttr:x=>x.source.startsWith('Nhập')?` data-del="${x.from}" title="Bấm để xoá kỳ nhập tay"`:''});
+  $('#fxtb').querySelectorAll('tbody tr[data-del]').forEach(tr=>tr.onclick=async()=>{if(confirm('Xoá kỳ tỷ giá nhập tay '+tr.dataset.del+'?')){await post('/api/fx/delete',{date_from:tr.dataset.del});go('settings')}});
+}
+async function fxAdd(){try{await post('/api/fx',{date_from:$('#fx_f').value,date_to:$('#fx_t').value,usd:$('#fx_u').value});toast('Đã lưu tỷ giá');go('settings')}catch(e){toast(e.message,1)}}
+async function fxUpload(){const f=$('#fx_file').files[0];if(!f)return toast('Chọn file trước',1);try{const r=await upload('/api/fx/upload',f);toast(`Đã nạp ${r.imported} kỳ`+(r.errors.length?`, ${r.errors.length} dòng lỗi: ${r.errors[0]}`:''),r.errors.length>0);go('settings')}catch(e){toast(e.message,1)}}
+
+/* ===== Nhập lô từ sheet 'Export Material' ===== */
+let EM=null;
+async function emRead(){
+  const f=$('#emfile').files[0];if(!f)return toast('Chọn file trước',1);
+  $('#emlog').innerHTML='<p class="warn">Đang tìm sheet "Export Material" và đọc dữ liệu… (file lớn mất vài chục giây)</p>';
+  try{EM=await upload('/api/export-material/preview',f);emRender()}catch(e){$('#emlog').innerHTML='';toast(e.message,1)}
+}
+function emRender(){
+  const h=EM.header,miss=EM.lines.filter(l=>!l.in_stock_data).length;
+  $('#emlog').innerHTML=`<div class="panel" style="border-color:var(--warn)"><p>Đã đọc sheet <b>${esc(EM.sheet)}</b>: <b>${EM.lines.length}</b> dòng NVL.
+   ${miss?`<span class="warn">${miss} mã chưa có trong dữ liệu tờ khai nhập (sẽ báo thiếu tồn).</span>`:'<span class="ok">Mọi mã đều có trong dữ liệu nhập.</span>'}
+   ${EM.existing_kinds.length?`<span class="bad"> Đã có lô cùng mã "${esc(h.so_inv)}" (${EM.existing_kinds.map(k=>KIND[k]).join(', ')}) — đổi Mã lô nếu muốn tạo lô mới.</span>`:''}</p>
+   <div class="grid2"><label>Loại lô<select id="em_kind"><option value="XK">Xuất khẩu</option><option value="MDK">Xuất mục đích khác</option><option value="TH">Tiêu huỷ</option></select></label>
+    <label>Mã lô / Số INV<input id="em_code" value="${esc(h.so_inv||'')}"></label><label>Số TK xuất<input id="em_tk" value="${esc(h.so_tk_xuat||'')}"></label>
+    <label>Ngày TK xuất<input id="em_ntk" value="${esc(h.ngay_tk||'')}"></label><label>Ngày INV<input id="em_ninv" value="${esc(h.ngay_inv||'')}"></label>
+    <label>Trừ tờ khai nhập TỪ ngày<input id="em_from" placeholder="trống = không giới hạn"></label><label>… ĐẾN ngày<input id="em_to" placeholder="trống = không giới hạn"></label></div>
+   <div class="scroll" style="max-height:30vh;margin-top:8px"><table><tr><th>#</th><th>Mã hàng</th><th>Mô tả</th><th class=n>Qty</th><th>Unit</th><th></th></tr>${EM.lines.map((l,i)=>`<tr><td>${i+1}</td><td>${esc(l.ma_hang)}</td><td>${esc((l.mo_ta||'').slice(0,70))}</td><td class=n>${fmt(l.qty)}</td><td>${esc(l.dvt)}</td><td class="${l.in_stock_data?'':'warn'}">${l.in_stock_data?'':'chưa có trong dữ liệu nhập'}</td></tr>`).join('')}</table></div>
+   <div class="row" style="margin-top:8px"><button class="b" onclick="emCreate()">Tạo lô nháp</button><button class="b d" onclick="EM=null;$('#emlog').innerHTML=''">Huỷ</button></div></div>`;
+}
+async function emCreate(){
+  try{const r=await post('/api/events',{kind:$('#em_kind').value,code:$('#em_code').value.trim(),so_inv:$('#em_code').value.trim(),so_tk_xuat:$('#em_tk').value,ngay_tk:$('#em_ntk').value,
+    ngay_inv:$('#em_ninv').value,nhap_tu:$('#em_from').value,nhap_den:$('#em_to').value,lines:EM.lines.map(l=>({ma_hang:l.ma_hang,mo_ta:l.mo_ta,qty:l.qty,dvt:l.dvt}))});
+    EM=null;toast('Đã tạo lô nháp');go('events',r.id)}catch(e){toast(e.message,1)}
+}
+
+/* ===================== OUTBOUND SHIPMENT ===================== */
+const OBPRESET={
+  source:['B','C','D','E','G','L','M','O','P','Q','S','U','Z','AG','AF','AU','+SoTK','+NgayTK','+Invoice'],
+  list:['B','C','E','G','H','I','J','K','L','M','N','O','P','Q','Y','Z','AA','_goods'],
+  tracking:['C','D','E','F','G','H','K','L','M','R','T','U','_files']};
+const OBG={}; // trạng thái lưới từng bảng
+let OBF={ship:'',inv:'',sel:{}};
+function obNoData(){return `<div class="panel"><h2>Chưa có dữ liệu Outbound</h2><p class="mut">Vào <b>Nạp dữ liệu</b> và chọn file "Database outbound shipping plan.xlsx" để nạp các bảng Source_Data, List shipment, Tracking.</p><button class="b" onclick="go('ob_data')">Nạp dữ liệu</button></div>`}
+function bars(list,key){const mx=Math.max(1,...list.map(x=>x.n));return list.map(x=>`<div class="row" style="margin:3px 0;flex-wrap:nowrap"><span style="width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(x.v)}">${esc(x.v)}</span><div class="bar" style="width:${Math.round(x.n/mx*260)}px"></div><b>${fmt(x.n)}</b></div>`).join('')}
+
+async function obHome(){
+  const d=await api('/api/ob/overview');
+  if(!d.tables.some(t=>t.loaded)){$('#main').innerHTML=obNoData();return}
+  const s=d.stats,tb=Object.fromEntries(d.tables.map(t=>[t.name,t]));
+  $('#main').innerHTML=`<div class="panel"><h2>Tìm shipment</h2><div class="row"><input id="obsq" placeholder="Nhập bất kỳ dữ liệu nào: Shipment ID, khách hàng, SO, booking, B/L, container, seal, cảng, mã hàng, forwarder…" style="flex:1;min-width:280px;font-size:15px;padding:9px 12px" value="${esc(window.OBSQ||'')}" autofocus><button class="b" onclick="obSearch()">Tìm</button><button class="b g" onclick="$('#obsq').value='';window.OBSQ='';$('#obsr').innerHTML=''">Xoá</button><button class="b" title="Một file Excel: tất cả shipment với đầy đủ trường dữ liệu và từng dòng hàng" onclick="obFullExport({},'','list')">⬇ Xuất file đầy đủ tất cả shipment</button></div>
+   <p class="mut" style="margin:6px 0 0">Tìm trong Shipment (Source data), List shipment, Tracking và Information of goods — không phân biệt hoa thường và dấu.</p><div id="obsr"></div></div>
+   <div class="cards">${d.tables.filter(t=>t.loaded).map(t=>`<div class="card" style="cursor:pointer" onclick="go('ob_${t.name==='source'?'ship':t.name}')"><div class="k">${esc(t.title)}</div><div class="v">${fmt(t.rows)}</div><div class="k">cập nhật ${esc(t.updated_at||'')}</div></div>`).join('')}</div>
+   <div id="obrep"></div>
+   <div class="panel"><h2>Shipment mới nhất (Source data)</h2><div class="scroll" style="max-height:none"><table><tr><th>Shipment ID</th><th>Consignee</th><th>Type of goods</th><th>Pick up date</th><th>Type of container</th><th>Term of delivery</th><th>Status</th><th>FWD</th><th></th></tr>${s.recent.map(r=>`<tr><td><b>${esc(r.id)}</b></td><td>${esc(String(r.consignee||'').split('\n')[0].slice(0,60))}</td><td title="${esc(r.goods||'')}">${esc(String(r.goods||'').split('\n')[0].slice(0,60))}</td><td>${esc(String(r.pickup||'').slice(0,10).split('-').reverse().join('/'))}</td><td>${esc(r.container||'')}</td><td>${esc(r.term||'')}</td><td>${esc(r.status||'')}</td><td>${esc(r.fwd||'')}</td><td style="white-space:nowrap"><button class="b g" onclick="obOpenForms('${esc(r.id)}')">Biểu mẫu</button> <button class="b g" onclick="obEdit(${r.rid})">Xem / sửa</button></td></tr>`).join('')}</table></div></div>`;
+  obSearchBind();
+  obReport();
+}
+
+/* ===== Báo cáo tổng quan Outbound ===== */
+const MCOL={AIR:'#e67e22',SEA:'#2f7ec7',TRUCK:'#2e9e6b',OTHER:'#8a94a0'};
+const MLAB={AIR:'Air',SEA:'Sea',TRUCK:'Truck',OTHER:'Chưa phân loại'};
+let OBR={sel:null,from:'',to:''};
+function obRepQS(){return new URLSearchParams({statuses:OBR.sel===null?'':(OBR.sel.length?OBR.sel.join('|'):'-'),from:OBR.from,to:OBR.to}).toString()}
+async function obReport(){
+  const box=$('#obrep');if(!box)return;
+  const r=await api('/api/ob/report?'+obRepQS());
+  if(OBR.sel===null)OBR.sel=r.selected;
+  const tot=r.modes.reduce((a,m)=>a+m.count,0);
+  // donut theo phương thức
+  let acc=0;const R=70,C=2*Math.PI*R;
+  const arcs=r.modes.filter(m=>m.count).map(m=>{const len=m.count/tot*C;const a=`<circle r="${R}" cx="90" cy="90" fill="none" stroke="${MCOL[m.mode]}" stroke-width="30" stroke-dasharray="${len} ${C-len}" stroke-dashoffset="${-acc}" transform="rotate(-90 90 90)"><title>${m.label}: ${m.count}</title></circle>`;acc+=len;return a}).join('');
+  const mx=Math.max(1,...r.months.map(m=>m.AIR+m.SEA+m.TRUCK+m.OTHER));
+  const cols=r.months.map(m=>{const t=m.AIR+m.SEA+m.TRUCK+m.OTHER;return `<div style="display:flex;flex-direction:column;align-items:center;min-width:26px" title="${esc(m.month)}: ${t} shipment (Air ${m.AIR} · Sea ${m.SEA} · Truck ${m.TRUCK} · khác ${m.OTHER})">
+    <div style="font-size:10px;color:var(--mut)">${t}</div><div style="height:130px;display:flex;flex-direction:column-reverse;width:18px">${['SEA','AIR','TRUCK','OTHER'].map(k=>m[k]?`<div style="height:${Math.max(2,m[k]/mx*120)}px;background:${MCOL[k]}"></div>`:'').join('')}</div>
+    <div style="font-size:10px;color:var(--mut);writing-mode:vertical-rl;transform:rotate(180deg);height:48px">${esc(m.month.length>7?'chưa có ngày':m.month)}</div></div>`}).join('');
+  const p=r.progress;
+  box.innerHTML=`<div class="panel"><div class="row"><h2 style="margin:0">Báo cáo shipment</h2><a href="/export/ob-report.xlsx?${obRepQS()}"><button class="b g">⬇ Xuất Excel báo cáo</button></a></div>
+   <div class="row" style="margin-top:8px"><b>Tình trạng:</b>${r.statuses.map(s=>`<label class="tag" style="cursor:pointer;padding:3px 10px"><input type="checkbox" class="obst" value="${esc(s.status)}" ${OBR.sel.includes(s.status)?'checked':''}> ${esc(s.status)} <b>${fmt(s.count)}</b></label>`).join('')}
+    <button class="b g" onclick="obRepSet('all')">Tất cả (trừ Huỷ)</button><button class="b g" onclick="obRepSet('Done')">Chỉ Done</button><button class="b g" onclick="obRepSet('Processing')">Chỉ Processing</button></div>
+   <div class="row"><b>Ngày pick up:</b><label>từ <input id="obr_f" placeholder="yyyy-mm-dd" size="11" value="${esc(OBR.from)}"></label><label>đến <input id="obr_t" placeholder="yyyy-mm-dd" size="11" value="${esc(OBR.to)}"></label><button class="b" onclick="obRepDates()">Áp dụng</button><button class="b g" onclick="OBR.from='';OBR.to='';obReport()">Xoá ngày</button>
+    <span class="mut">Shipment chưa có ngày pick up/ETD chỉ nằm trong báo cáo khi không lọc ngày.</span></div>
+   <div class="cards" style="margin-top:10px"><div class="card"><div class="k">Shipment (theo tình trạng đã chọn)</div><div class="v">${fmt(r.total)}</div></div>
+    ${r.modes.map(m=>`<div class="card" style="border-left:4px solid ${MCOL[m.mode]}"><div class="k">${m.label}</div><div class="v">${fmt(m.count)}</div><div class="k">${tot?Math.round(m.count/tot*100):0}%</div></div>`).join('')}
+    <div class="card"><div class="k">Tổng số lượng (CTNS)</div><div class="v">${fmt(r.qty)}</div></div></div>
+   <div class="grid2" style="align-items:start;margin-top:8px">
+    <div class="card"><h2>Tỷ trọng Air / Sea / Truck</h2><div class="row" style="flex-wrap:nowrap"><svg viewBox="0 0 180 180" width="170" height="170"><circle r="${R}" cx="90" cy="90" fill="none" stroke="var(--line)" stroke-width="30"/>${arcs}<text x="90" y="88" text-anchor="middle" font-size="26" font-weight="600" fill="currentColor">${fmt(tot)}</text><text x="90" y="108" text-anchor="middle" font-size="11" fill="var(--mut)">shipment</text></svg>
+     <div>${r.modes.map(m=>`<div><span style="display:inline-block;width:11px;height:11px;border-radius:2px;background:${MCOL[m.mode]}"></span> ${m.label}: <b>${fmt(m.count)}</b></div>`).join('')}${r.modes[2].count===0?'<p class="mut" style="font-size:12px;max-width:190px">Chưa có shipment nào có Type of Movement = TRUCK.</p>':''}</div></div></div>
+    <div class="card"><h2>Đã vận chuyển trên tổng thể</h2><div style="font-size:30px;font-weight:600">${p.pct}%</div><div class="mut">${fmt(p.done)} shipment <b>Done</b> / ${fmt(p.active)} shipment (không tính ${fmt(p.cancelled)} đã huỷ)</div>
+     <div style="height:18px;background:var(--line);border-radius:9px;overflow:hidden;margin:8px 0"><div style="width:${p.pct}%;height:100%;background:var(--ok)"></div></div>
+     <div class="mut" style="font-size:12px">Số container / xe (Source data, cột Cont no.): <b>${fmt(r.containers.count)}</b> · thuộc <b>${fmt(r.containers.shipments)}</b> shipment</div></div></div>
+   <div class="card" style="margin-top:8px"><h2>Số shipment theo tháng (pick up) — Air / Sea / Truck</h2><div class="scroll" style="max-height:none;overflow-x:auto"><div style="display:flex;gap:4px;align-items:flex-end;padding-bottom:4px">${cols||'<span class=mut>Không có dữ liệu</span>'}</div></div></div>
+   <div class="grid2" style="align-items:start;margin-top:8px"><div class="card"><h2>Forwarder (theo tình trạng đã chọn)</h2>${bars(r.forwarders)}</div>
+    <div class="card"><h2>Tất cả tình trạng</h2>${bars(r.statuses.map(s=>({v:s.status,n:s.count})))}</div></div></div>`;
+  box.querySelectorAll('.obst').forEach(c=>c.onchange=()=>{OBR.sel=[...box.querySelectorAll('.obst:checked')].map(x=>x.value);obReport()});
+}
+function obRepSet(w){api('/api/ob/report?'+new URLSearchParams({statuses:'',from:OBR.from,to:OBR.to})).then(r=>{OBR.sel=w==='all'?r.statuses.map(s=>s.status).filter(s=>!s.startsWith('Huỷ')):[w];obReport()})}
+function obRepDates(){OBR.from=$('#obr_f').value.trim();OBR.to=$('#obr_t').value.trim();obReport()}
+
+
+/* ===== Trang riêng: Dòng hàng (Invoice) — nhập một lần, tự link sang List shipment theo Shipment# ===== */
+const OBGD={filters:{},q:'',sort:'',dir:'asc',page:1,size:100};
+const GHINT={text:'chứa · =chính xác · !loại trừ · a|b',number:'vd >100, 5..20'};
+async function obGoodsPage(){
+  $('#main').innerHTML=`<div class="panel"><h2>Quét Invoice (Excel / PDF) — tự điền thay vì nhập tay</h2>
+   <p class="mut">Chọn một hoặc nhiều file Commercial Invoice (.xlsx hoặc PDF có chữ). Hệ thống đọc <b>Invoice Number, Invoice Date, Polarium SO/TO, Customer PO, Polarium Ref (Shipment ID), Incoterms, Mode of shipment, HS code, Sold to / Deliver to / Shipper</b> và <b>các dòng hàng</b> (Item, Description, Qty, Unit, COO, Unit price, Currency, Amount); bạn xem và sửa trước khi lưu.</p>
+   <div class="row"><input type="file" id="scfile" multiple accept=".xlsx,.xlsm,.pdf"><button class="b" onclick="obScanFiles()">Quét Invoice</button></div><div id="scout"></div>
+   <h2 style="margin-top:14px">Invoice đã quét</h2><div id="invlist"></div></div>
+   <div class="panel"><h2>Dòng hàng (Invoice)</h2>
+   <p class="mut">Nhập dòng hàng của mọi shipment ở đây (Item, Description, Qty, Unit, COO, Unit price, Currency, Amount). Hệ thống <b>tự link</b> sang <b>List shipment</b> và Source data theo mã Shipment — mở một dòng List shipment là thấy ngay các dòng hàng của shipment đó.</p>
+   <div class="row" style="padding:8px;border:1px dashed var(--line);border-radius:8px"><b>Import từ file Invoice (Excel):</b><input type="file" id="gbfile" accept=".xlsx,.xlsm">
+    <label>Shipment mặc định <input id="gbship" placeholder="nếu file không có cột Shipment ID" size="22"></label>
+    <label>Cách nạp <select id="gbmode"><option value="replace">Thay dòng hàng cũ của shipment</option><option value="append">Thêm vào cuối</option></select></label><button class="b g" onclick="obGoodsBulk(true)">Đọc file &amp; kiểm tra</button></div>
+   <p class="mut" style="margin:6px 0">File cần cột <b>Item</b> và <b>Qty</b>; nhận thêm Shipment ID, Description, Unit, COO (Origin), Unit price, Currency (USD/EUR/SEK), Amount, Ter of delivery, Net/Gross weight — theo tên cột, thứ tự tuỳ ý. Một file có thể chứa nhiều shipment (cột Shipment ID).</p>
+   <div id="gblog"></div><div id="gdsum"></div></div>
+   <div class="panel"><div class="row"><input id="gdq" placeholder="Tìm nhanh: shipment, item, description, COO…" size="32" value="${esc(OBGD.q)}"><button class="b" onclick="obGoodsEdit(null)">+ Thêm dòng</button><button class="b g" onclick="OBGD.filters={};OBGD.q='';OBGD.page=1;obGoodsPage()">Xoá lọc</button>
+    <button class="b g" onclick="obGoodsExport()">⬇ Xuất Excel (đang lọc)</button><span class="mut" id="gdcnt"></span></div><div class="scroll" id="gdtb"></div><div class="row" id="gdpg" style="margin-top:8px"></div></div>`;
+  let tm;$('#gdq').oninput=e=>{clearTimeout(tm);tm=setTimeout(()=>{OBGD.q=e.target.value;OBGD.page=1;obGoodsLoad(true)},350)};
+  await obGoodsLoad(true);
+  obInvList();
+}
+const gdParams=()=>new URLSearchParams({filters:JSON.stringify(OBGD.filters),q:OBGD.q,sort:OBGD.sort,dir:OBGD.dir,page:OBGD.page,size:OBGD.size}).toString();
+function obGoodsExport(){location.href='/export/ob-goods.xlsx?'+gdParams()}
+async function obGoodsLoad(rebuild){
+  const r=await api('/api/ob/goods-grid?'+gdParams());
+  $('#gdsum').innerHTML=`<div class="row"><span class="tag"><b>${fmt(r.summary.lines)}</b> dòng hàng</span><span class="tag"><b>${fmt(r.summary.ships)}</b> shipment</span>${r.summary.by_ccy.map(c=>`<span class="tag">Amount <b>${fmt(c.amount)}</b> ${esc(c.ccy||'')}</span>`).join('')}</div>`;
+  if(rebuild||!$('#gdbody')){
+    $('#gdtb').innerHTML=`<table><thead><tr>${r.columns.map((c,i)=>`<th class="${r.types[i]==='number'?'n':''}" style="cursor:pointer;white-space:nowrap" data-s="${esc(c)}">${esc(c)}${OBGD.sort===c?(OBGD.dir==='asc'?' ▲':' ▼'):''}</th>`).join('')}<th>List shipment</th></tr>
+     <tr>${r.columns.map((c,i)=>`<th><input data-f="${esc(c)}" value="${esc(OBGD.filters[c]||'')}" placeholder="${GHINT[r.types[i]]}" style="width:100%;min-width:70px;font-size:12px"></th>`).join('')}<th></th></tr></thead><tbody id="gdbody"></tbody></table>`;
+    $('#gdtb').querySelectorAll('[data-f]').forEach(i=>{let t;i.addEventListener('input',()=>{clearTimeout(t);t=setTimeout(()=>{OBGD.filters[i.dataset.f]=i.value;OBGD.page=1;obGoodsLoad()},400)})});
+    $('#gdtb').querySelectorAll('[data-s]').forEach(h=>h.addEventListener('click',()=>{const c=h.dataset.s;OBGD.dir=(OBGD.sort===c&&OBGD.dir==='asc')?'desc':'asc';OBGD.sort=c;obGoodsLoad(true)}));
+  }
+  $('#gdbody').innerHTML=r.rows.map((row,k)=>`<tr style="cursor:pointer" onclick="obGoodsEdit(${r.ids[k]})">`+row.map((v,i)=>`<td class="${r.types[i]==='number'?'n':''}" title="${v==null?'':esc(v)}">${v==null?'':r.types[i]==='number'?fmt(v):esc(String(v).slice(0,80))}</td>`).join('')+
+    `<td style="white-space:nowrap" onclick="event.stopPropagation()">${r.list_lines[k]?`<a href="#" onclick="obGoodsToList('${esc(row[0])}');return false">${r.list_lines[k]} dòng →</a>`:(r.in_source[k]?'<span class="mut">chỉ có ở Source data</span>':'<span class="warn">chưa có trong List shipment</span>')}</td></tr>`).join('')||'<tr><td class=mut>Chưa có dòng hàng nào — import file Invoice hoặc bấm + Thêm dòng</td></tr>';
+  const pages=Math.max(1,Math.ceil(r.total/OBGD.size));
+  $('#gdcnt').textContent=`${fmt(r.total)} dòng khớp`;
+  $('#gdpg').innerHTML=`<button class="b g" ${OBGD.page<=1?'disabled':''} onclick="OBGD.page--;obGoodsLoad()">‹</button><span>Trang ${OBGD.page}/${pages}</span><button class="b g" ${OBGD.page>=pages?'disabled':''} onclick="OBGD.page++;obGoodsLoad()">›</button>`;
+}
+function obGoodsToList(ship){(OBG.list??={filters:{},q:'',sort:'',dir:'asc',page:1,size:100,cols:null});OBG.list.filters={'Shipment#':ship};OBG.list.q='';OBG.list.page=1;go('ob_list')}
+async function obGoodsEdit(gid){
+  const g=gid?await api('/api/ob/goods-line/'+gid):{ship_key:'',ccy:'USD'};
+  const m=document.createElement('div');m.className='obmodal';m.id='obmodal';
+  const f=(k,l,t='')=>`<label>${l}<input data-gf="${k}" value="${esc(g[k]??'')}" ${t}></label>`;
+  m.innerHTML=`<div class="box" style="max-width:820px"><div class="row"><h2 style="margin:0">${gid?'Sửa dòng hàng':'Thêm dòng hàng'}</h2><span style="flex:1"></span>${gid?`<button class="b d" onclick="obGoodsDel(${gid})">Xoá</button>`:''}<button class="b" onclick="obGoodsSave(${gid||'null'})">Lưu</button><button class="b g" onclick="obClose()">Đóng</button></div>
+   <div class="obf" style="margin-top:8px">${f('ship_key','Shipment (Shipment# / Shipment ID)')}${f('ma_hang','Item')}<label style="grid-column:1/-1">Description<input data-gf="ten_hang" value="${esc(g.ten_hang??'')}"></label>
+    ${f('qty','Qty')}${f('dvt','Unit')}${f('xuat_xu','COO')}${f('don_gia','Unit price')}<label>Currency<select data-gf="ccy">${['USD','EUR','SEK'].concat(['USD','EUR','SEK'].includes(g.ccy)||!g.ccy?[]:[g.ccy]).map(c=>`<option ${c===(g.ccy||'USD')?'selected':''}>${esc(c)}</option>`).join('')}</select></label>
+    <label>Amount (tự tính = Qty × Unit price)<input data-gf="amount" value="${esc(g.amount??'')}"></label>${f('ter','Ter of delivery')}${f('net_w','Net weight')}${f('gross_w','Gross weight')}</div></div>`;
+  document.body.appendChild(m);m.addEventListener('mousedown',e=>{if(e.target===m)obClose()});
+}
+async function obGoodsSave(gid){
+  const fields={};let ship='';$('#obmodal').querySelectorAll('[data-gf]').forEach(i=>{if(i.dataset.gf==='ship_key')ship=i.value;else fields[i.dataset.gf]=i.value});
+  try{await post('/api/ob/goods-line',{id:gid,ship,fields});obClose();toast('Đã lưu');obGoodsLoad(true)}catch(e){toast(e.message,1)}}
+async function obGoodsDel(gid){if(!confirm('Xoá dòng hàng này?'))return;await post(`/api/ob/goods-line/${gid}/delete`);obClose();obGoodsLoad(true)}
+
+
+/* ===== Quét Invoice (Excel / PDF) -> tự điền thông tin + dòng hàng ===== */
+let SCAN=[];
+async function obScanFiles(){
+  const fs=[...$('#scfile').files];if(!fs.length)return toast('Chọn file Invoice trước',1);
+  $('#scout').innerHTML='<p class="warn">Đang quét invoice…</p>';SCAN=[];
+  for(const f of fs){
+    try{const r=await upload('/api/ob/invoice/scan?name='+encodeURIComponent(f.name),f);SCAN.push({file:f.name,res:r,ship:r.header.polarium_ref||'',include:true,mode:'replace'})}
+    catch(e){SCAN.push({file:f.name,error:e.message})}
+  }
+  obScanRender();
+}
+async function obScanSheet(i,sheet){const s=SCAN[i];try{const r=await api(`/api/ob/invoice/scan?token=${s.res.token}&name=${encodeURIComponent(s.file)}&sheet=${encodeURIComponent(sheet)}`,{method:'POST',body:''});s.res=r;s.ship=r.header.polarium_ref||s.ship;obScanRender()}catch(e){toast(e.message,1)}}
+const SC_FIELDS=[['invoice_no','Invoice Number'],['invoice_date','Invoice Date'],['so_to','Polarium SO/TO'],['customer_po','Customer PO'],['incoterms','INCOTERMS'],['mode','Mode of shipment'],['hs_code','HS code'],['carrier','Carrier']];
+function obScanRender(){
+  $('#scout').innerHTML=SCAN.map((s,i)=>{
+    if(s.error)return `<div class="panel" style="border-color:var(--bad)"><b>${esc(s.file)}</b> — <span class="bad">${esc(s.error)}</span></div>`;
+    const r=s.res,h=r.header;
+    return `<div class="panel" style="border-color:var(--warn)"><div class="row"><label style="font-weight:600"><input type="checkbox" ${s.include?'checked':''} onchange="SCAN[${i}].include=this.checked"> ${esc(s.file)}</label><span class="tag">${r.source.toUpperCase()}</span>
+     ${r.sheets&&r.sheets.length>1?`<label>Sheet <select onchange="obScanSheet(${i},this.value)">${r.sheets.map(n=>`<option ${n===r.sheet?'selected':''}>${esc(n)}</option>`).join('')}</select></label>`:''}
+     <span class="tag ${r.known_ship?'ok':'warn'}">${r.known_ship?'Shipment có trong Source data':'Shipment chưa có trong Source data'}</span>${r.existing?'<span class="tag warn">Invoice này đã quét trước đó — sẽ cập nhật</span>':''}</div>
+     <div class="obf" style="margin:6px 0"><label style="color:var(--ink);font-weight:600">Shipment ID <input data-sc="${i}" data-f="ship" value="${esc(s.ship)}"></label>${SC_FIELDS.map(([k,l])=>`<label>${l}<input data-sc="${i}" data-f="${k}" value="${esc(h[k]||'')}"></label>`).join('')}
+      <label>Tiền tệ<input data-sc="${i}" data-f="currency" value="${esc(r.currency||'')}" size="5"></label><label>Total Value<input data-sc="${i}" data-f="total" value="${r.total??''}"></label></div>
+     <details style="margin:4px 0"><summary class="mut" style="cursor:pointer">Sold to / Deliver to / Shipper / Remarks</summary><div class="obf" style="margin-top:6px">${[['sold_to','Sold to'],['deliver_to','Deliver to'],['shipper','Shipper'],['remarks','Remarks']].map(([k,l])=>`<label>${l}<textarea rows="3" readonly>${esc(h[k]||'')}</textarea></label>`).join('')}</div></details>
+     <div class="scroll" style="max-height:30vh"><table><tr><th>#</th><th>Item</th><th>Description</th><th class=n>Qty</th><th>Unit</th><th>COO</th><th class=n>Unit price</th><th class=n>Amount</th></tr>${r.lines.map((l,k)=>`<tr><td>${k+1}</td><td>${esc(l.ma_hang||'')}</td><td>${esc((l.ten_hang||'').slice(0,80))}</td><td class=n>${fmt(l.qty)}</td><td>${esc(l.dvt||'')}</td><td>${esc(l.xuat_xu||'')}</td><td class=n>${fmt(l.don_gia)}</td><td class=n>${fmt(l.amount)}</td></tr>`).join('')}
+      <tr><td colspan=7 class=n><b>Tổng các dòng</b></td><td class="n ${r.total_match?'ok':'bad'}"><b>${fmt(r.sum_lines)} ${esc(r.currency||'')}</b></td></tr></table></div>
+     ${r.warnings.length?`<p class="warn">⚠ ${r.warnings.map(esc).join('<br>⚠ ')}</p>`:'<p class="ok">✓ Đã đọc đủ thông tin; tổng các dòng khớp Total Value.</p>'}
+     <div class="row"><label>Dòng hàng <select onchange="SCAN[${i}].mode=this.value"><option value="replace">Thay các dòng của Invoice này (nếu đã nạp)</option><option value="append">Thêm vào cuối</option></select></label></div></div>`}).join('')+
+   (SCAN.some(s=>!s.error)?`<div class="row"><button class="b" onclick="obScanApply()">Lưu các Invoice đã chọn</button><button class="b d" onclick="SCAN=[];$('#scout').innerHTML=''">Huỷ</button><span class="mut">Lưu: thông tin Invoice, các dòng hàng (link sang List shipment), Số Invoice ở Source data và đính kèm file gốc.</span></div>`:'');
+  document.querySelectorAll('[data-sc]').forEach(el=>el.oninput=()=>{const s=SCAN[+el.dataset.sc];if(el.dataset.f==='ship')s.ship=el.value;else if(el.dataset.f==='currency')s.res.currency=el.value;else if(el.dataset.f==='total')s.res.total=el.value===''?null:parseFloat(el.value);else s.res.header[el.dataset.f]=el.value});
+}
+async function obScanApply(){
+  const sel=SCAN.filter(s=>!s.error&&s.include);if(!sel.length)return toast('Chưa chọn invoice nào',1);
+  const bad=sel.filter(s=>!s.ship.trim());if(bad.length)return toast('Nhập Shipment ID cho: '+bad.map(s=>s.file).join(', '),1);
+  let ok=0,msgs=[];
+  for(const s of sel){try{const r=await post('/api/ob/invoice/apply',{token:s.res.token,file:s.file,source:s.res.source,ship:s.ship.trim(),header:s.res.header,lines:s.res.lines,currency:s.res.currency,total:s.res.total,mode:s.mode});ok++;msgs.push(`${r.invoice_no||s.file} → ${r.ship}: ${r.lines} dòng hàng${r.attached?', đã đính kèm file':''}${r.in_source?'':' (shipment chưa có trong Source data)'}`)}catch(e){msgs.push(`${s.file}: ${e.message}`)}}
+  $('#scout').innerHTML=`<div class="panel"><p class="${ok===sel.length?'ok':'warn'}"><b>Đã lưu ${ok}/${sel.length} invoice.</b></p><ul>${msgs.map(m=>`<li>${esc(m)}</li>`).join('')}</ul></div>`;SCAN=[];$('#scfile').value='';
+  obGoodsLoad(true);obInvList();
+}
+async function obInvList(){
+  const box=$('#invlist');if(!box)return;const d=await api('/api/ob/invoices');
+  box.innerHTML=d.length?`<div class="scroll" style="max-height:40vh"><table><tr><th>Shipment</th><th>Invoice</th><th>Ngày</th><th>SO/TO</th><th>Customer PO</th><th>Incoterms</th><th>Mode</th><th class=n>Total</th><th class=n>Dòng</th><th>File</th><th>Quét lúc</th><th></th></tr>${d.map(x=>`<tr><td><b>${esc(x.ship_key)}</b></td><td>${esc(x.invoice_no||'')}</td><td>${esc(x.invoice_date||'')}</td><td>${esc(x.so_to||'')}</td><td>${esc(x.customer_po||'')}</td><td>${esc(x.incoterms||'')}</td><td>${esc(x.mode||'')}</td><td class=n>${fmt(x.total_value)} ${esc(x.ccy||'')}</td><td class=n>${x.n_lines}</td><td title="${esc(x.file_name||'')}">${esc((x.file_name||'').slice(0,28))}</td><td>${esc((x.at||'').slice(0,16))}</td><td><button class="b d" style="padding:2px 8px;font-size:12px" onclick="obInvDel(${x.id})">Xoá</button></td></tr>`).join('')}</table></div>`:'<p class="mut">Chưa có Invoice nào được quét.</p>';
+}
+async function obInvDel(id){const lines=confirm('Xoá thông tin Invoice này.\nOK = xoá luôn các dòng hàng của Invoice này; Cancel = chỉ xoá thông tin Invoice, giữ dòng hàng.');if(!confirm('Xác nhận xoá Invoice?'))return;await post(`/api/ob/invoice/${id}/delete`,{lines});toast('Đã xoá');obInvList();obGoodsLoad(true)}
+function obInvoicesHtml(row){
+  const L=row.invoices||[];if(!L.length)return '';
+  return `<div class="obsec"><div class="obsh">Invoice <span class="mut">(đã quét — thông tin tự điền từ file Invoice)</span></div><div class="scroll" style="max-height:20vh"><table><tr><th>Invoice</th><th>Ngày</th><th>SO/TO</th><th>Customer PO</th><th>Incoterms</th><th>Mode</th><th class=n>Total</th><th>File</th></tr>${L.map(x=>`<tr><td><b>${esc(x.invoice_no||'')}</b></td><td>${esc(x.invoice_date||'')}</td><td>${esc(x.so_to||'')}</td><td>${esc(x.customer_po||'')}</td><td>${esc(x.incoterms||'')}</td><td>${esc(x.mode||'')}</td><td class=n>${fmt(x.total_value)} ${esc(x.ccy||'')}</td><td>${esc(x.file_name||'')}</td></tr>`).join('')}</table></div></div>`}
+
+
+function obShipExport(rid){location.href='/export/ob-full.xlsx?'+new URLSearchParams({row:rid})}
+function obFullExport(filters,q,tbl){location.href='/export/ob-full.xlsx?'+new URLSearchParams({filters:JSON.stringify(filters||{}),q:q||'',tbl:tbl||'source'})}
+let obsT;
+function obSearchBind(){const i=$('#obsq');if(!i)return;i.oninput=()=>{clearTimeout(obsT);obsT=setTimeout(obSearch,350)};i.onkeydown=e=>{if(e.key==='Enter'){clearTimeout(obsT);obSearch()}};if(i.value.trim().length>=2)obSearch()}
+async function obSearch(){
+  const q=($('#obsq')||{}).value||'';window.OBSQ=q;const box=$('#obsr');if(!box)return;
+  if(q.trim().length<2){box.innerHTML='';return}
+  const r=await api('/api/ob/search?q='+encodeURIComponent(q));if(($('#obsq')||{}).value!==q)return; // kết quả cũ
+  if(!r.results.length){box.innerHTML=`<p class="mut" style="margin-top:8px">Không tìm thấy shipment nào khớp "${esc(q)}".</p>`;return}
+  box.innerHTML=`<p class="mut" style="margin:8px 0 4px">${r.total} shipment khớp${r.total>r.results.length?` (hiển thị ${r.results.length} đầu tiên — nhập cụ thể hơn để thu hẹp)`:''}</p>
+   <div class="scroll" style="max-height:55vh"><table><tr><th>Shipment ID</th><th>Khách hàng (Consignee)</th><th>Cảng đến</th><th>Booking</th><th>B/L No.</th><th>ETD</th><th>FWD</th><th>Status</th><th>Tìm thấy ở</th><th></th></tr>${r.results.map(x=>`<tr><td><b>${esc(x.ship)}</b></td><td>${esc(x.consignee||'')}</td><td>${esc(x.pod||'')}</td><td>${esc(x.booking||'')}</td><td>${esc(x.bl||'')}</td><td>${esc(x.etd||'')}</td><td>${esc(x.fwd||'')}</td><td>${esc(x.status||'')}</td>
+    <td style="font-size:12px">${x.found.map(f=>`<div title="${esc(f.field||'')}: ${esc(f.text||'')}"><span class="tag">${esc(f.tbl)}</span> <span class="mut">${esc((f.field||'').slice(0,24))}: ${esc((f.text||'').slice(0,50))}</span></div>`).join('')}</td>
+    <td style="white-space:nowrap">${x.row_id?`<button class="b g" onclick="obEdit(${x.row_id})">Xem / sửa</button> `:''}<button class="b g" onclick="obOpenForms('${esc(x.ship)}')">Biểu mẫu</button></td></tr>`).join('')}</table></div>`;
+}
+async function obGrid(tbl){
+  const st=OBG[tbl]??={filters:{},q:'',sort:'',dir:'asc',page:1,size:100,cols:null};
+  const r0=await api(`/api/ob/grid?${new URLSearchParams({tbl,size:1})}`);
+  if(!r0.columns.length){$('#main').innerHTML=obNoData();return}
+  st.info=r0.col_info;
+  if(!st.cols){try{st.cols=JSON.parse(localStorage['obcols_'+tbl]||'null')}catch(e){}}
+  if(!st.cols||!st.cols.every(l=>st.info.some(c=>c.letter===l)))st.cols=(OBPRESET[tbl]||st.info.slice(0,14).map(c=>c.letter)).filter(l=>st.info.some(c=>c.letter===l));
+  const title={source:'Shipment (Source data)',list:'List shipment',tracking:'Tracking xe / container',return:'Return shipment',y2025:'2025 Outbound'}[tbl];
+  $('#main').innerHTML=`<div class="panel"><div class="row"><h2 style="margin:0">${title}</h2><button class="b" onclick="obEdit(null,'${tbl}')">+ Thêm dòng</button>
+   <input id="obq" placeholder="Tìm nhanh trong mọi cột…" size="28" value="${esc(st.q)}">
+   <details><summary class="b g" style="display:inline-block;list-style:none;cursor:pointer;padding:6px 12px;border:1px solid var(--pri);border-radius:6px;color:var(--pri)">Chọn cột (${st.cols.length}/${st.info.length})</summary><div style="position:absolute;z-index:5;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:10px;max-height:60vh;overflow:auto;width:360px"><input id="obcq" placeholder="Tìm cột…" style="width:100%;margin-bottom:6px"><div id="obcl"></div></div></details>
+   <button class="b g" onclick="obAllCols('${tbl}',true)">Tất cả cột</button><button class="b g" onclick="obAllCols('${tbl}',false)">Cột chính</button><button class="b g" onclick="OBG['${tbl}'].filters={};OBG['${tbl}'].q='';OBG['${tbl}'].page=1;go(cur)">Xoá lọc</button>
+   <button class="b g" onclick="obExport('${tbl}')">⬇ Xuất Excel (đang lọc)</button>${tbl==='source'||tbl==='list'?`<button class="b" title="Một file: mọi shipment + dòng hàng (mã hàng, số lượng, đơn giá…) + Invoice + List shipment + Tracking" onclick="obFullExport(OBG['${tbl}'].filters,OBG['${tbl}'].q,'${tbl}')">⬇ Xuất file đầy đủ (shipment + dòng hàng)</button>`:''}<span class="mut" id="obcnt"></span></div>
+   <div class="scroll" id="obtb"></div><div class="row" id="obpg" style="margin-top:8px"></div></div>`;
+  const cl=()=>{const t=fold($('#obcq').value);$('#obcl').innerHTML=st.info.filter(c=>fold(c.name+c.letter).includes(t)).map(c=>`<label style="display:block"><input type="checkbox" data-l="${c.letter}" ${st.cols.includes(c.letter)?'checked':''}> ${esc(c.name.slice(0,60))} <span class="mut">${c.letter}${c.tag?' · '+c.tag:''}</span></label>`).join('');
+    $('#obcl').querySelectorAll('input').forEach(i=>i.onchange=()=>{const l=i.dataset.l;st.cols=i.checked?[...st.cols,l]:st.cols.filter(x=>x!==l);st.cols=st.info.map(c=>c.letter).filter(x=>st.cols.includes(x));if(!st.cols.length)st.cols=[l];localStorage['obcols_'+tbl]=JSON.stringify(st.cols);obLoad(tbl,true)})};
+  $('#obcq').oninput=cl;cl();
+  let tm;$('#obq').oninput=e=>{clearTimeout(tm);tm=setTimeout(()=>{st.q=e.target.value;st.page=1;obLoad(tbl)},350)};
+  await obLoad(tbl,true);
+}
+function obAllCols(tbl,all){const st=OBG[tbl];st.cols=all?st.info.map(c=>c.letter):(OBPRESET[tbl]||st.info.slice(0,14).map(c=>c.letter));localStorage['obcols_'+tbl]=JSON.stringify(st.cols);go(cur)}
+function obParams(tbl,extra){const st=OBG[tbl];return new URLSearchParams({tbl,filters:JSON.stringify(st.filters),q:st.q,sort:st.sort,dir:st.dir,page:st.page,size:st.size,...extra}).toString()}
+function obExport(tbl){const st=OBG[tbl];location.href=`/export/ob/${tbl}.xlsx?`+new URLSearchParams({filters:JSON.stringify(st.filters),q:st.q,sort:st.sort,dir:st.dir})}
+async function obLoad(tbl,rebuild){
+  const st=OBG[tbl],r=await api('/api/ob/grid?'+obParams(tbl)),show=r.col_info.filter(c=>st.cols.includes(c.letter));
+  const idx=Object.fromEntries(r.col_info.map((c,i)=>[c.letter,i]));
+  if(rebuild||!$('#obbody')){
+    $('#obtb').innerHTML=`<table><thead><tr>${show.map(c=>`<th class="${c.type==='number'?'n':''}" style="cursor:pointer;white-space:nowrap" data-s="${esc(c.name)}">${esc(c.name.slice(0,40))}${st.sort===c.name?(st.dir==='asc'?' ▲':' ▼'):''}${c.tag?` <span class="tag ${c.tag.toLowerCase()}">${c.tag}</span>`:''}</th>`).join('')}</tr>
+     <tr>${show.map((c,i)=>c.computed?'<th></th>':`<th><input data-f="${esc(c.name)}" list="obdl${i}" value="${esc(st.filters[c.name]||'')}" placeholder="${HINT[c.type]}" style="width:100%;min-width:90px;font-size:12px"><datalist id="obdl${i}"></datalist></th>`).join('')}</tr></thead><tbody id="obbody"></tbody></table>`;
+    $('#obtb').querySelectorAll('[data-f]').forEach(i=>{let t;i.addEventListener('input',()=>{clearTimeout(t);t=setTimeout(()=>{st.filters[i.dataset.f]=i.value;st.page=1;obLoad(tbl)},400)});
+      i.addEventListener('focus',async()=>{if(i.list.dataset.ok)return;i.list.dataset.ok=1;const d=await api('/api/ob/distinct?'+obParams(tbl,{col:i.dataset.f}));i.list.innerHTML=d.slice(0,150).map(x=>`<option value="${esc(String(x.v).slice(0,80))}">${x.n}</option>`).join('')})});
+    $('#obtb').querySelectorAll('[data-s]').forEach(h=>h.addEventListener('click',()=>{const c=h.dataset.s;st.dir=(st.sort===c&&st.dir==='asc')?'desc':'asc';st.sort=c;obLoad(tbl,true)}));
+  }
+  $('#obbody').innerHTML=r.rows.map((row,k)=>`<tr style="cursor:pointer" onclick="obEdit(${r.ids[k]})">`+show.map(c=>{const v=row[idx[c.letter]];return `<td class="${c.type==='number'?'n':''}" title="${v==null?'':esc(v)}">${v==null?'':c.letter==='_files'?'📎 '+v:c.type==='number'?fmt(v):esc(String(v).split('\n')[0].slice(0,120))}</td>`}).join('')+'</tr>').join('')||'<tr><td class=mut>Không có dòng nào khớp</td></tr>';
+  const pages=Math.max(1,Math.ceil(r.total/st.size));
+  $('#obcnt').textContent=`${fmt(r.total)} dòng khớp`;
+  $('#obpg').innerHTML=`<button class="b g" ${st.page<=1?'disabled':''} onclick="OBG['${tbl}'].page--;obLoad('${tbl}')">‹</button><span>Trang ${st.page}/${pages}</span><button class="b g" ${st.page>=pages?'disabled':''} onclick="OBG['${tbl}'].page++;obLoad('${tbl}')">›</button>`;
+}
+
+/* --- sửa / thêm dòng --- */
+const SRC_LAYOUT=[
+  {t:'Shipper / Consignee / Notify',f:['F','G','H'],cols:3},
+  {t:'Booking',f:['B','C','D','E','AG','+TypeBL','I','J','K','L','M','N','O','P','Q'],rows:2},
+  {goods:true},
+  {t:'Packing',sub:'(trước đây: Description of Packages and Goods)',f:['R','S','T','V','U','W','AB','+UN','AL','AM','AN','AO','AP','AQ','AR'],cols:5},
+  {t:'Delivery',sub:'Container 1',f:['Z','AA','AC','AD','AE','AI'],cols:6},
+  {sub:'Container 2',f:['AV','AW','AX','AY','AZ','BB','BA'],cols:6},
+  {t:'Pick up plan',f:['AS','+ActualPU','AT','AU','BC'],cols:5},
+  {t:'Tờ khai & Invoice',f:['+SoTK','+NgayTK','+Invoice'],cols:3},
+  {t:'Khác',rest:true,cols:4}];
+const LBL={AD:'Max gross weight (kg) — khối lượng sử dụng lớn nhất',AE:'TOTAL GROSS MASS (INCLUDING TARE kg)',AG:'B/L No.',AS:'Request pick up',AT:'Status',AU:'FWD',AR:'Note',BC:'Note',AI:'FMC No./Vehicle trucking',AL:'IMO',R:'Description of Packages and Goods'};
+const LONG_F=new Set(['F','G','H','R','AR','BC','AH']);
+let OBROW=null,OBGOODS=[];
+const fmtSize=n=>n>1048576?(n/1048576).toFixed(1)+' MB':Math.max(1,Math.round(n/1024))+' KB';
+function obField(c,cls){
+  const v=OBROW.cells[c.letter];const val=v==null?'':String(v);const label=LBL[c.letter]||c.name.slice(0,70);
+  const tall=LONG_F.has(c.letter)||val.includes('\n');
+  return `<label class="${tall?'tall':''}" style="${cls||''}">${esc(label)}${c.tag?` <span class="tag ${c.tag.toLowerCase()}">${c.tag}</span>`:''}
+    ${tall?`<textarea rows="${Math.min(6,Math.max(2,val.split('\n').length))}" data-l="${esc(c.letter)}">${esc(val)}</textarea>`:`<input data-l="${esc(c.letter)}" value="${esc(val)}" ${c.type==='date'?'placeholder="dd/mm/yyyy"':''}>`}</label>`}
+function obSectionHtml(row){
+  const by=Object.fromEntries(row.cols.map(c=>[c.letter,c]));const used=new Set(['AK']);
+  const sec=SRC_LAYOUT.map(s=>{
+    if(s.goods)return obGoodsHtml(by);
+    let fields=s.rest?row.cols.filter(c=>!used.has(c.letter)):s.f.map(l=>by[l]).filter(Boolean);
+    fields.forEach(c=>used.add(c.letter));
+    if(!s.rest)s.f.forEach(l=>used.add(l));
+    if(!fields.length)return '';
+    const n=fields.length,gc=s.rows?Math.ceil(n/s.rows):(s.cols||4);
+    return `<div class="obsec">${s.t?`<div class="obsh">${esc(s.t)}${s.sub?` <span class="mut">${esc(s.sub)}</span>`:''}</div>`:(s.sub?`<div class="mut" style="margin:4px 0 2px">${esc(s.sub)}</div>`:'')}
+      <div class="obg ${s.rows?'compact':''}" style="grid-template-columns:repeat(${gc},minmax(${s.rows?110:150}px,1fr))">${fields.map(c=>obField(c,LONG_F.has(c.letter)&&!s.rows?'':'')).join('')}</div></div>`}).join('');
+  return sec}
+function obGoodsHtml(by){
+  const LM=OBROW.tbl==='list';
+  if(!OBROW.ship)return `<div class="obsec"><div class="obsh">${LM?'Dòng hàng (Invoice)':'Information of goods'}</div><p class="mut">Lưu dòng này (có ${LM?'Shipment#':'Shipment ID'}) trước, sau đó nhập hoặc import các dòng hàng.</p></div>`;
+  return `<div class="obsec"><div class="obsh">${LM?`Dòng hàng (Invoice) — shipment ${esc(OBROW.ship)} <span class="mut">(item, description, qty, unit, COO, unit price, currency, amount — dùng chung cho mọi dòng cùng Shipment#, và với mục Information of goods của Shipment)</span>`:'Information of goods <span class="mut">(mã hàng, tên hàng, số lượng, ĐVT, đơn giá, xuất xứ, amount, net / gross weight)</span>'}</div>
+   <div class="row" style="margin:4px 0">${by.AK?`<label style="font-size:12px;color:var(--mut)">Ter of delivery (shipment) <input data-l="AK" value="${esc(OBROW.cells.AK||'')}" size="16"></label>`:''}
+    <button class="b g" type="button" onclick="obGoodsAdd()">+ Thêm dòng</button><button class="b g" type="button" onclick="$('#obgfile').click()">Import từ Excel</button><input type="file" id="obgfile" accept=".xlsx,.xlsm" style="display:none" onchange="obGoodsImport()">
+    <span class="mut">${LM?'Import từ file Invoice: cần cột Item và Qty; nhận thêm Description, Unit, COO (Origin), Unit price, Currency, Amount.':'File cần cột Mã hàng (Item) và Qty; các cột khác nhận theo tên (Description, Unit, Unit price, Currency, Origin, Amount, Net/Gross weight…)'}</span></div>
+   <div class="scroll" style="max-height:36vh"><table id="obgoods"></table></div></div>`}
+function obGoodsDraw(){
+  const t=$('#obgoods');if(!t)return;
+  const inp=(i,f,w,extra='')=>`<input data-gi="${i}" data-gf="${f}" value="${esc(OBGOODS[i][f]??'')}" style="width:${w}px;font-size:12px;${extra}">`;
+  const tot={};let nw=0,gw=0;const LM=OBROW.tbl==='list';
+  t.innerHTML=(LM?`<tr><th>#</th><th>Item</th><th>Description</th><th class=n>Qty</th><th>Unit</th><th>COO</th><th class=n>Unit price</th><th>Currency</th><th class=n>Amount</th><th></th></tr>`:`<tr><th>#</th><th>Mã hàng</th><th>Tên hàng</th><th class=n>Số lượng</th><th>ĐVT</th><th class=n>Đơn giá</th><th>Tiền tệ</th><th>Xuất xứ</th><th class=n>Amount</th><th>Ter of delivery</th><th class=n>Net weight</th><th class=n>Gross weight</th><th></th></tr>`)+
+  OBGOODS.map((g,i)=>{const q=parseFloat(g.qty),p=parseFloat(g.don_gia);const amt=(isFinite(q)&&isFinite(p))?Math.round(q*p*100)/100:(g.amount??null);
+    if(amt!=null){tot[g.ccy||'USD']=(tot[g.ccy||'USD']||0)+amt}nw+=parseFloat(g.net_w)||0;gw+=parseFloat(g.gross_w)||0;
+    const ccy=`<select data-gi="${i}" data-gf="ccy">${['USD','EUR','SEK'].concat(['USD','EUR','SEK'].includes(g.ccy)||!g.ccy?[]:[g.ccy]).map(c=>`<option ${c===(g.ccy||'USD')?'selected':''}>${esc(c)}</option>`).join('')}</select>`;
+    const del=`<button class="b g" type="button" onclick="OBGOODS.splice(${i},1);obGoodsDraw()">✕</button>`;
+    if(LM)return `<tr><td>${i+1}</td><td>${inp(i,'ma_hang',120)}</td><td>${inp(i,'ten_hang',300)}</td><td class=n>${inp(i,'qty',70,'text-align:right')}</td><td>${inp(i,'dvt',55)}</td><td>${inp(i,'xuat_xu',90)}</td><td class=n>${inp(i,'don_gia',85,'text-align:right')}</td><td>${ccy}</td><td class=n id="gam${i}">${amt==null?'':fmt(amt)}</td><td>${del}</td></tr>`;
+    return `<tr><td>${i+1}</td><td>${inp(i,'ma_hang',110)}</td><td>${inp(i,'ten_hang',230)}</td><td class=n>${inp(i,'qty',70,'text-align:right')}</td><td>${inp(i,'dvt',50)}</td><td class=n>${inp(i,'don_gia',80,'text-align:right')}</td>
+     <td>${ccy}</td><td>${inp(i,'xuat_xu',90)}</td><td class=n id="gam${i}">${amt==null?'':fmt(amt)}</td><td>${inp(i,'ter',70)}</td><td class=n>${inp(i,'net_w',70,'text-align:right')}</td><td class=n>${inp(i,'gross_w',70,'text-align:right')}</td><td>${del}</td></tr>`}).join('')+
+  (OBGOODS.length?(LM?`<tr><td colspan=8 class=n><b>Tổng</b></td><td class=n><b>${Object.entries(tot).map(([c,v])=>fmt(v)+' '+c).join(' · ')}</b></td><td></td></tr>`:`<tr><td colspan=8 class=n><b>Tổng</b></td><td class=n><b>${Object.entries(tot).map(([c,v])=>fmt(v)+' '+c).join(' · ')}</b></td><td></td><td class=n><b>${fmt(nw)}</b></td><td class=n><b>${fmt(gw)}</b></td><td></td></tr>`):`<tr><td colspan=13 class=mut>Chưa có dòng hàng nào</td></tr>`);
+  t.querySelectorAll('[data-gi]').forEach(el=>{const h=()=>{OBGOODS[+el.dataset.gi][el.dataset.gf]=el.value;if(['qty','don_gia','ccy'].includes(el.dataset.gf)){const g=OBGOODS[+el.dataset.gi],q=parseFloat(g.qty),p=parseFloat(g.don_gia);const c=$('#gam'+el.dataset.gi);if(c)c.textContent=(isFinite(q)&&isFinite(p))?fmt(Math.round(q*p*100)/100):''}};el.oninput=h;el.onchange=()=>{h();if(['qty','don_gia','ccy','net_w','gross_w'].includes(el.dataset.gf))obGoodsDraw()}});
+}
+function obGoodsAdd(){OBGOODS.push({ma_hang:'',ten_hang:'',qty:'',dvt:'',don_gia:'',ccy:'USD',xuat_xu:'',ter:'',net_w:'',gross_w:''});obGoodsDraw()}
+async function obGoodsImport(){
+  const f=$('#obgfile').files[0];if(!f)return;
+  try{const r=await upload('/api/ob/goods/parse?ship='+encodeURIComponent(OBROW.ship||OBROW.key||''),f);
+    if(OBGOODS.length&&!confirm(`Đã có ${OBGOODS.length} dòng hàng. OK = thay bằng ${r.lines.length} dòng từ file; Cancel = thêm vào cuối.`))OBGOODS=OBGOODS.concat(r.lines);else OBGOODS=r.lines.slice();
+    obGoodsDraw();toast(`Đã đọc ${r.lines.length} dòng hàng${r.skipped_other_shipments?`, bỏ qua ${r.skipped_other_shipments} dòng của shipment khác`:''}${r.warnings.length?` — ${r.warnings[0]}`:''}. Bấm Lưu để ghi.`,r.warnings.length>0)}catch(e){toast(e.message,1)}
+  $('#obgfile').value='';
+}
+/* --- file đính kèm (hình ảnh / pdf) --- */
+function obFilesHtml(){
+  if(!OBROW.id)return '';
+  return `<div class="obsec"><div class="obsh">File đính kèm <span class="mut">(hình ảnh, pdf… — vd bằng chứng giao nhận hàng)</span></div>
+   <div class="row"><input type="file" id="obfup" multiple accept=".pdf,.png,.jpg,.jpeg,.gif,.webp,.bmp,.tif,.tiff,.heic,.txt,.csv,.xlsx,.xls,.docx,.doc"><button class="b g" type="button" onclick="obUpload()">Tải lên</button><span class="mut">tối đa 30 MB / file</span></div><div id="obfiles"></div></div>`}
+function obFilesDraw(){
+  const box=$('#obfiles');if(!box)return;const L=OBROW.files||[];
+  box.innerHTML=L.length?`<div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:6px">${L.map(f=>{const img=/\.(png|jpe?g|gif|webp|bmp)$/i.test(f.name);
+    return `<div class="card" style="width:170px;padding:6px"><a href="/files/${f.id}/${encodeURIComponent(f.name)}" target="_blank" title="${esc(f.name)}">${img?`<img src="/files/${f.id}/${encodeURIComponent(f.name)}" style="width:100%;height:100px;object-fit:cover;border-radius:4px">`:`<div style="height:100px;display:flex;align-items:center;justify-content:center;font-size:30px">${/\.pdf$/i.test(f.name)?'📄':'📎'}</div>`}</a>
+     <div style="font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(f.name)}">${esc(f.name)}</div><div class="mut" style="font-size:11px">${fmtSize(f.size)} · ${esc((f.at||'').slice(0,16))}</div>
+     <button class="b d" type="button" style="padding:2px 8px;font-size:12px" onclick="obFileDel(${f.id})">Xoá</button></div>`}).join('')}</div>`:'<p class="mut">Chưa có file nào.</p>';
+}
+async function obUpload(){
+  const fs=[...$('#obfup').files];if(!fs.length)return toast('Chọn file trước',1);
+  try{for(const f of fs){const r=await fetch(`/api/ob/files?row=${OBROW.id}&name=${encodeURIComponent(f.name)}`,{method:'POST',body:await f.arrayBuffer()});const j=await r.json();if(!r.ok)throw new Error(j.error||r.status)}
+    OBROW.files=(await api('/api/ob/row/'+OBROW.id)).files;$('#obfup').value='';obFilesDraw();toast(`Đã tải lên ${fs.length} file`)}catch(e){toast(e.message,1)}}
+async function obFileDel(id){if(!confirm('Xoá file đính kèm này?'))return;await post(`/api/ob/files/${id}/delete`);OBROW.files=OBROW.files.filter(f=>f.id!==id);obFilesDraw()}
+
+async function obEdit(rid,tbl){
+  let row;
+  if(rid){row=await api('/api/ob/row/'+rid)}
+  else{const g=await api(`/api/ob/grid?tbl=${tbl}&size=1`);row={id:null,tbl,title:'Thêm dòng mới',cols:g.col_info.filter(c=>!c.computed),cells:{},key:null,files:[],goods:[]}}
+  OBROW=row;OBGOODS=(row.goods||[]).map(g=>({...g}));
+  const m=document.createElement('div');m.className='obmodal';m.id='obmodal';
+  const wide=c=>LONG_F.has(c.letter)||/Shipper|Consignee|Notify|Description|Note|Ghi chú|Route/i.test(c.name)?'grid-column:1/-1':'';
+  // List shipment: Item (H) / Description (I) gốc vẫn được GIỮ vì biểu mẫu PK / INV đọc từ đây — chỉ thu gọn, không xoá
+  const folded=row.tbl==='list'?row.cols.filter(c=>['H','I'].includes(c.letter)):[];
+  const body=row.tbl==='source'?obSectionHtml(row):`<div class="obf">${row.cols.filter(c=>!folded.includes(c)).map(c=>obField(c,wide(c))).join('')}</div>`+
+    (folded.length?`<details class="obsec"><summary class="mut" style="cursor:pointer">Item / Description gốc (biểu mẫu PK, INV đang đọc dữ liệu này — bấm để xem / sửa)</summary><div class="obf" style="margin-top:8px">${folded.map(c=>obField(c,wide(c))).join('')}</div></details>`:'');
+  m.innerHTML=`<div class="box"><div class="row"><h2 style="margin:0">${esc(row.title)}${row.key?' · '+esc(row.key):''}</h2>
+   ${row.tbl==='source'&&row.key?`<button class="b g" onclick="obOpenForms('${esc(row.key)}')">Mở biểu mẫu</button><button class="b g" onclick="obShipExport(${row.id})">⬇ Xuất shipment này (đầy đủ)</button>`:''}${row.tbl==='list'&&row.id?`<button class="b g" title="Xuất toàn bộ như trong chi tiết: List shipment, dòng hàng Invoice, thông tin Invoice, Source data, Tracking" onclick="obShipExport(${row.id})">⬇ Xuất shipment này (đầy đủ)</button>`:''}
+   <span style="flex:1"></span>${rid?`<button class="b d" onclick="obDelete(${rid})">Xoá dòng</button>`:''}<button class="b" onclick="obSave(${rid||'null'},'${row.tbl}')">Lưu</button><button class="b g" onclick="obClose()">Đóng</button></div>
+   <p class="mut">Ngày nhập dd/mm/yyyy. Nhãn <span class="tag logs">Logs</span> / <span class="tag wh">WH</span> = bộ phận điền dữ liệu (theo file gốc). Các trường bổ sung (Information of goods, Số tờ khai, Invoice, File…) không làm thay đổi dữ liệu của các biểu mẫu.</p>
+   ${body}${row.tbl==='list'?obGoodsHtml({}):''}${obInvoicesHtml(row)}${obFilesHtml()}</div>`;
+  document.body.appendChild(m);m.addEventListener('mousedown',e=>{if(e.target===m)obClose()});
+  obGoodsDraw();obFilesDraw();
+}
+function obClose(){const m=$('#obmodal');if(m)m.remove();OBROW=null}
+async function obSave(rid,tbl){
+  const cells={};$('#obmodal').querySelectorAll('[data-l]').forEach(i=>cells[i.dataset.l]=i.value);
+  try{let key=OBROW.key;
+    if(rid)await post(`/api/ob/row/${rid}/save`,{cells});else{const r=await post('/api/ob/row',{tbl,cells});rid=r.id}
+    if(tbl==='list'){const sh=(cells.G??OBROW.ship??'').trim()||OBROW.ship;if(sh&&(OBGOODS.length||(OBROW.goods&&OBROW.goods.length)))await post('/api/ob/goods/save',{ship:sh,lines:OBGOODS})}
+    if(tbl==='source'){const newKey=(cells.B??OBROW.key??'').trim();
+      if(OBROW.key&&OBROW.key!==newKey)await post('/api/ob/goods/save',{ship:OBROW.key,lines:[]});
+      if(newKey&&(OBGOODS.length||OBROW.goods&&OBROW.goods.length||OBROW.key))await post('/api/ob/goods/save',{ship:newKey,lines:OBGOODS})}
+    obClose();toast('Đã lưu');go(cur)}catch(e){toast(e.message,1)}}
+async function obDelete(rid){if(!confirm('Xoá dòng này khỏi hệ thống (kèm file đính kèm)?'))return;await post(`/api/ob/row/${rid}/delete`);obClose();go(cur)}
+
+/* --- biểu mẫu --- */
+function obOpenForms(id){obClose();OBF.ship=id;go('ob_forms')}
+async function obForms(){
+  const f=await api('/api/ob/forms');
+  if(!f.ship_ids.length){$('#main').innerHTML=obNoData();return}
+  const need=k=>f.forms.filter(x=>x.kind===k);
+  $('#main').innerHTML=`<div class="panel noprint"><h2>Biểu mẫu Outbound</h2>
+   <p class="mut">Các biểu mẫu là bản gốc trong file Excel của bạn (cùng định dạng, công thức VLOOKUP tính từ dữ liệu trong hệ thống). Chọn Shipment ID rồi xem hoặc tải từng biểu mẫu.</p>
+   <div class="row"><label>Shipment ID <input id="obship" list="obshiplist" value="${esc(OBF.ship)}" size="22" placeholder="vd VNOUT00736-DG"></label><datalist id="obshiplist">${f.ship_ids.slice().reverse().map(x=>`<option value="${esc(x)}">`).join('')}</datalist>
+   <label>Mã Packing list / Invoice <input id="obinv" list="obinvlist" value="${esc(OBF.inv)}" size="18" placeholder="vd VNBRINT00091"></label><datalist id="obinvlist">${f.inv_ids.slice().reverse().map(x=>`<option value="${esc(x)}">`).join('')}</datalist></div>
+   <div class="grid2" style="margin-top:8px">${f.forms.map(x=>`<div class="card" style="padding:8px 10px"><label style="display:flex;gap:6px;align-items:flex-start"><input type="checkbox" class="obsel" value="${esc(x.sheet)}" ${OBF.sel[x.sheet]?'checked':''}><span><b>${esc(x.sheet)}</b><br><span class="mut" style="font-size:12px">${esc(x.title.replace(x.sheet+' — ','').replace(x.sheet,'') || '')}</span>${x.kind==='inv'?'<br><span class="tag">dùng Mã PK/INV</span>':''}</span></label>
+     <div class="row" style="margin:6px 0 0"><button class="b" onclick="obPreview('${esc(x.sheet)}')">Xem</button><button class="b g" onclick="obDownload(['${esc(x.sheet)}'])">⬇ Excel</button></div></div>`).join('')}</div>
+   <div class="row" style="margin-top:10px"><button class="b g" onclick="obDownload(obChecked())">⬇ Tải các biểu mẫu đã tick (1 file, mỗi biểu mẫu 1 sheet)</button><button class="b g" onclick="obCheckAll(true)">Tick tất cả</button><button class="b g" onclick="obCheckAll(false)">Bỏ tick</button></div></div>
+   <div id="obprev"></div>`;
+  $('#obship').oninput=e=>OBF.ship=e.target.value;$('#obinv').oninput=e=>OBF.inv=e.target.value;
+  $('#main').querySelectorAll('.obsel').forEach(c=>c.onchange=()=>OBF.sel[c.value]=c.checked);
+}
+const obChecked=()=>[...document.querySelectorAll('.obsel:checked')].map(c=>c.value);
+function obCheckAll(v){document.querySelectorAll('.obsel').forEach(c=>{c.checked=v;OBF.sel[c.value]=v})}
+function obQS(sheets){return new URLSearchParams({ship:OBF.ship.trim(),inv:OBF.inv.trim(),...(sheets?{sheets:sheets.join('|')}:{})}).toString()}
+function obDownload(sheets){if(!sheets.length)return toast('Tick ít nhất một biểu mẫu',1);if(!OBF.ship.trim()&&!OBF.inv.trim())return toast('Nhập Shipment ID',1);location.href='/export/ob-form.xlsx?'+obQS(sheets)}
+async function obPreview(sheet){
+  if(!OBF.ship.trim()&&!OBF.inv.trim())return toast('Nhập Shipment ID',1);
+  $('#obprev').innerHTML=`<div class="panel"><p class="warn">Đang lập biểu mẫu ${esc(sheet)}… (khoảng 3–5 giây)</p></div>`;
+  try{const r=await api(`/api/ob/form-html?sheet=${encodeURIComponent(sheet)}&`+obQS());
+    $('#obprev').innerHTML=`<div class="panel"><div class="row noprint"><h2 style="margin:0">${esc(sheet)} — ${esc(OBF.ship||OBF.inv)}</h2><button class="b g" onclick="obDownload(['${esc(sheet)}'])">⬇ Excel</button><button class="b g" onclick="window.print()">🖨 In</button></div>
+     ${r.errors.length?`<p class="warn noprint">${r.errors.length} ô không tính được (để trống) — thường do Shipment này chưa có dòng container con (-1, -2…) hoặc tham chiếu bị hỏng trong file gốc. <details style="display:inline"><summary>chi tiết</summary>${r.errors.map(e=>esc(e.cell)+': '+esc(e.error)).join(', ')}</details></p>`:''}
+     <div style="overflow:auto;background:#fff;padding:8px;border:1px solid var(--line);border-radius:8px">${r.html}</div></div>`;
+    $('#obprev').scrollIntoView({behavior:'smooth'})}catch(e){$('#obprev').innerHTML='';toast(e.message,1)}}
+
+async function obGoodsBulk(dry){
+  const f=$('#gbfile').files[0];if(!f)return toast('Chọn file trước',1);
+  try{const r=await upload('/api/ob/goods/import?dry='+(dry?1:0)+'&mode='+encodeURIComponent(($('#gbmode')||{}).value||'replace')+'&ship='+encodeURIComponent((($('#gbship')||{}).value||'').trim()),f);
+    if(!dry){$('#gblog').innerHTML=`<p class="ok"><b>Đã lưu dòng hàng cho ${r.ships.length} shipment.</b></p>`;toast('Đã import dòng hàng');if(cur==='ob_goods')obGoodsLoad(true);return}
+    const err=r.problems.filter(p=>p.level!=='warn'),warn=r.problems.filter(p=>p.level==='warn');
+    $('#gblog').innerHTML=`<div class="panel" style="border-color:var(--warn)"><p>Kiểm tra (chưa lưu): <b>${r.ships.length}</b> shipment, <b>${r.ships.reduce((a,s)=>a+s.lines,0)}</b> dòng hàng.</p>
+     <div class="scroll" style="max-height:30vh"><table><tr><th>Shipment</th><th class=n>Dòng trong file</th><th class=n>Dòng cũ sẽ bị thay</th><th></th></tr>${r.ships.map(s=>`<tr><td>${esc(s.ship)}</td><td class=n>${s.lines}</td><td class=n>${s.replaces}</td><td class="${s.exists?'':'warn'}">${s.exists?'':'chưa có trong bảng Shipment'}</td></tr>`).join('')}</table></div>
+     ${err.length?`<p class="bad"><b>${err.length} dòng lỗi bị bỏ qua:</b> ${err.slice(0,5).map(p=>`dòng ${p.row}: ${esc(p.msg)}`).join('; ')}</p>`:''}${r.warnings&&r.warnings.length?`<p class="warn">${esc(r.warnings.slice(0,3).join('; '))}</p>`:''}
+     <div class="row"><button class="b" onclick="obGoodsBulk(false)" ${r.ships.length?'':'disabled'}>Xác nhận &amp; lưu</button><button class="b d" onclick="$('#gblog').innerHTML=''">Huỷ</button></div></div>`}catch(e){toast(e.message,1)}}
+
+/* --- nạp dữ liệu --- */
+let OBTOK=null;
+async function obData(){
+  const d=await api('/api/ob/overview');
+  $('#main').innerHTML=`<div class="panel"><h2>Dữ liệu Outbound hiện có</h2><table><tr><th>Bảng</th><th>Sheet gốc</th><th class=n>Số dòng</th><th>Cập nhật lần cuối</th></tr>${d.tables.map(t=>`<tr><td>${esc(t.title)}</td><td>${esc(t.sheet)}</td><td class=n>${t.loaded?fmt(t.rows):'—'}</td><td>${esc(t.updated_at||'chưa nạp')}</td></tr>`).join('')}</table></div>
+   <div class="panel"><h2>Cập nhật dữ liệu từ file Excel</h2><p class="mut">Chọn file "Database outbound shipping plan.xlsx" (hoặc file cùng cấu trúc). Hệ thống tìm các sheet Source_Data, List shipment, Tracking… — bạn kiểm tra rồi nạp. <b>Nạp sẽ thay toàn bộ dữ liệu của bảng được chọn</b> (kể cả chỉnh sửa trực tiếp trên hệ thống).</p>
+   <div class="row"><input type="file" id="obfile" accept=".xlsx,.xlsm" onchange="obPick()"><span id="obpick" class="mut"></span></div><div id="oblog"></div></div>
+   <div class="panel"><h2>Dòng hàng (Invoice)</h2><p class="mut">Việc nhập và import dòng hàng (Item, Description, Qty, Unit, COO, Unit price, Currency, Amount) đã có mục riêng, tự link sang List shipment.</p><button class="b g" onclick="go('ob_goods')">Mở mục Dòng hàng (Invoice)</button></div>`;
+
+}
+async function obPick(){
+  const f=$('#obfile').files[0];OBTOK=null;if(!f)return;
+  $('#obpick').innerHTML='<span class="warn">Đang tải file lên và đọc danh sách sheet…</span>';
+  try{const r=await upload('/api/ob/file',f);OBTOK=r.token;
+    $('#obpick').innerHTML='';
+    $('#oblog').innerHTML=`<table><tr><th>Bảng dữ liệu</th><th>Lấy từ sheet</th></tr>${r.tables.map(t=>`<tr><td>${esc(t.title)}</td><td><select data-t="${t.name}"><option value="">— không nạp —</option>${r.sheets.map(s=>`<option ${r.candidates[t.name]===s?'selected':''}>${esc(s)}</option>`).join('')}</select></td></tr>`).join('')}</table>
+     <div class="row" style="margin-top:8px"><button class="b" onclick="obImport()">Nạp dữ liệu đã chọn</button><span class="mut">Sheet có dấu ✓ tự nhận theo tên chuẩn; đổi nếu file của bạn đặt tên khác.</span></div>`;
+  }catch(e){$('#obpick').innerHTML='';toast(e.message,1)}
+}
+async function obImport(){
+  const sel={};$('#oblog').querySelectorAll('select[data-t]').forEach(s=>{if(s.value)sel[s.dataset.t]=s.value});
+  if(!Object.keys(sel).length)return toast('Chọn ít nhất một bảng',1);
+  if(!confirm('Nạp sẽ THAY TOÀN BỘ dữ liệu của các bảng đã chọn. Tiếp tục?'))return;
+  $('#oblog').innerHTML='<p class="warn">Đang nạp dữ liệu…</p>';
+  try{const r=await post('/api/ob/import',{token:OBTOK,selection:sel});
+    $('#oblog').innerHTML=`<p class="ok"><b>Đã nạp xong.</b></p><table><tr><th>Bảng</th><th>Sheet</th><th class=n>Trước</th><th class=n>Sau</th><th class=n>Số cột</th></tr>${Object.entries(r).map(([k,v])=>`<tr><td>${esc(k)}</td><td>${esc(v.sheet)}</td><td class=n>${fmt(v.before)}</td><td class=n>${fmt(v.after)}</td><td class=n>${v.columns}</td></tr>`).join('')}</table>`;
+    toast('Đã nạp dữ liệu Outbound')}catch(e){toast(e.message,1);obData()}
+}
+
+const TABS={home:'Tổng quan',database:'Database',stock:'Tồn kho',co:'NVL C/O',xk:'NVL XK',th:'NVL tiêu huỷ',mdk:'NVL xuất khác',rvc:'Form RVC',bom:'BOM',events:'Lô xuất',data:'Nhập dữ liệu',settings:'Cài đặt',ob_home:'Tổng quan Outbound',ob_ship:'Shipment (Source data)',ob_list:'List shipment',ob_goods:'Dòng hàng (Invoice)',ob_track:'Tracking xe / cont',ob_forms:'Biểu mẫu',ob_data:'Nạp dữ liệu'};
+const GROUPS=[{id:'nvl',icon:'📦',title:'Hệ thống quản lý NVL',items:['home','database','stock','co','xk','th','mdk','rvc','bom','events','data','settings']},
+  {id:'ob',icon:'🚢',title:'Outbound shipment',items:['ob_home','ob_ship','ob_list','ob_goods','ob_track','ob_forms','ob_data']}];
+const LEDGER={co:'CO',xk:'XK',th:'TH',mdk:'MDK'};
+const LTITLE={CO:'NVL dùng làm C/O',XK:'NVL xuất khẩu',TH:'NVL tiêu huỷ',MDK:'NVL xuất mục đích khác'};
+const mny=v=>v==null?'':Number(v).toLocaleString('vi-VN',{maximumFractionDigits:4});
+async function ledgerView(kind){
+  const rows=await api('/api/ledger?kind='+kind);
+  $('#main').innerHTML=`<div class="panel"><div class="row"><h2 style="margin:0">${LTITLE[kind]}</h2><button class="b ${ledMode==='detail'?'':'g'}" onclick="ledMode='detail';go('${cur}')">Chi tiết theo tờ khai</button><button class="b ${ledMode==='sum'?'':'g'}" onclick="ledMode='sum';go('${cur}')">Tổng hợp theo mã hàng</button>
+   <a href="/export/kind/${kind}.xlsx"><button class="b g">⬇ Excel toàn bộ</button></a></div>
+   <p class="mut">Kết quả trừ lùi của <b>tất cả các lô ${KIND[kind]}</b>: lô đã ghi sổ và lô nháp (dự kiến, ghi rõ ở cột Trạng thái lô — lô nháp chưa trừ vào tồn kho). ${rows.length?'':'Chưa có lô nào.'} Lọc theo từng cột; rê chuột lên ô để xem đầy đủ.</p><div id="ledbox"></div></div>`;
+  const key='led_'+kind;
+  if(ledMode==='sum'){
+    const g={};rows.forEach(r=>{const x=g[r.ma_hang]??=({ma_hang:r.ma_hang,ten_hang:r.ten_hang,dvt:r.dvt,qty:0,tri_gia_usd:0,n_lo:new Set(),n_tk:new Set()});x.qty+=r.qty;x.tri_gia_usd+=r.tri_gia_usd||0;x.n_lo.add(r.lo);x.n_tk.add(r.so_tk)});
+    const d=Object.values(g).map(x=>({...x,n_lo:x.n_lo.size,n_tk:x.n_tk.size}));
+    miniTable($('#ledbox'),[{k:'ma_hang',l:'Mã hàng',t:'text'},{k:'ten_hang',l:'Tên hàng',t:'text',w:1},{k:'dvt',l:'ĐVT',t:'text'},{k:'qty',l:'Tổng số lượng',t:'number',b:1},{k:'tri_gia_usd',l:'Tổng trị giá (USD)',t:'number'},{k:'n_lo',l:'Số lô',t:'number'},{k:'n_tk',l:'Số tờ khai nhập',t:'number'}],d,'qty',{csv:key+'-tong-hop'});
+  }else miniTable($('#ledbox'),[{k:'lo',l:'Lô / INV',t:'text'},{k:'trang_thai',l:'Trạng thái lô',t:'text'},{k:'ngay_tk_xuat',l:'Ngày TK xuất',t:'text'},{k:'so_tk_xuat',l:'TK xuất',t:'text'},...(kind==='CO'?[{k:'so_co',l:'Số C/O',t:'text'}]:[]),
+    {k:'so_tk',l:'Tờ khai nhập',t:'text'},{k:'ngay_tk_nhap',l:'Ngày tờ khai',t:'text'},{k:'ma_hang',l:'Mã hàng',t:'text'},{k:'ten_hang',l:'Tên hàng',t:'text',w:1},{k:'dvt',l:'ĐVT',t:'text'},{k:'nuoc_xx',l:'Nước xuất xứ',t:'text'},{k:'ma_hs',l:'Mã HS',t:'text'},
+    {k:'qty',l:'Số lượng',t:'number',b:1},{k:'don_gia_cif',l:'Đơn giá CIF (USD)',t:'number'},{k:'ty_gia_usd',l:'Tỷ giá USD/VNĐ',t:'number'},{k:'tri_gia_usd',l:'Trị giá (USD)',t:'number'}],rows,null,{csv:key});
+}
+let ledMode='detail';
+let cur='home',evId=null;
+function nav(){
+  let closed={};try{closed=JSON.parse(localStorage.nvlClosed||'{}')}catch(e){}
+  $('#nav').innerHTML=GROUPS.map(g=>{const active=g.items.includes(cur);return `<div class="grp ${closed[g.id]&&!active?'closed':''}"><button class="gh" onclick="toggleGrp('${g.id}')"><span>${g.icon}</span><span>${g.title}</span><span class="ar">▾</span></button><div class="items">${g.items.map(k=>`<button class="${k===cur?'on':''}" onclick="go('${k}')">${TABS[k]}</button>`).join('')}</div></div>`}).join('')}
+function toggleGrp(id){let c={};try{c=JSON.parse(localStorage.nvlClosed||'{}')}catch(e){}c[id]=!c[id];localStorage.nvlClosed=JSON.stringify(c);document.querySelectorAll('#nav .grp')[GROUPS.findIndex(g=>g.id===id)].classList.toggle('closed',c[id])}
+async function go(t,id){cur=t;evId=id||null;if(!id)try{localStorage.nvlPage=t}catch(e){}nav();try{await VIEWS[t]()}catch(e){toast(e.message,1)}}
+
+const VIEWS={
+ob_home(){return obHome()},ob_ship(){return obGrid('source')},ob_list(){return obGrid('list')},ob_goods(){return obGoodsPage()},ob_track(){return obGrid('tracking')},ob_forms(){return obForms()},ob_data(){return obData()},
+async home(){
+  const s=await api('/api/summary');
+  const n=(st,k)=>s.events.filter(e=>(!st||e.status===st)&&(!k||e.kind===k)).reduce((a,e)=>a+e.n,0);
+  $('#main').innerHTML=`<div class="cards">
+   <div class="card"><div class="k">Dòng hàng nhập</div><div class="v">${fmt(s.lines)}</div><div class="k">${s.tk} tờ khai · ${s.codes} mã hàng</div></div>
+   <div class="card"><div class="k">Tổng SL nhập</div><div class="v">${fmt(s.nhap)}</div></div>
+   <div class="card"><div class="k">Luỹ kế đã xuất</div><div class="v">${fmt(s.xuat)}</div></div>
+   <div class="card"><div class="k">Còn tồn</div><div class="v">${fmt(s.nhap-s.xuat)}</div></div>
+   <div class="card"><div class="k">Lô đã khoá / nháp</div><div class="v">${n('LOCKED')} / ${n('DRAFT')}</div></div></div>
+   <div class="panel"><h2>Quy trình mỗi lô hàng mới</h2><ol>
+   <li><b>Nhập dữ liệu</b>: nạp báo cáo tờ khai nhập mới (file Excel hải quan) — dòng trùng tự bỏ qua.</li>
+   <li><b>Lô xuất → Tạo lô</b>: dán BOM (C/O) hoặc danh sách NVL thực xuất (XK / MDK / tiêu huỷ).</li>
+   <li>Mở lô → xem <b>phương án trừ lùi</b> (tờ khai nào bị trừ bao nhiêu, mã nào thiếu tồn).</li>
+   <li><b>Khoá lô</b> để ghi sổ — tồn kho cập nhật ngay. Xuất bảng RVC / nhật ký bằng 1 nút.</li></ol>
+   <p class="mut">Thứ tự trừ: <b>${s.settings.order}</b> · C/O chỉ trừ loại hình ${s.settings.types_co} · XK/MDK/TH trừ ${s.settings.types_other}.</p></div>`;
+},
+async database(){
+  resetG(true);
+  $('#main').innerHTML=`<div class="panel"><div class="row"><h2 style="margin:0">Database — dữ liệu nguồn các tờ khai nhập</h2><button class="b g" onclick="go('data')">Cập nhật / nạp file</button></div>
+   <p class="mut">Toàn bộ dữ liệu gốc từ báo cáo tờ khai (sheet 01_DATABASE), chưa kèm số liệu trừ lùi. Mỗi cột có ô lọc riêng; xem cột trừ lùi và tồn kho ở mục Tồn kho.</p><div id="gridbox"></div></div>`;
+  await mountGrid($('#gridbox'));
+},
+async stock(){
+  $('#main').innerHTML=`<div class="panel"><div class="row">
+   <button class="b ${stockMode==='line'?'':'g'}" onclick="stockMode='line';go('stock')">Theo tờ khai (mọi cột)</button>
+   <button class="b ${stockMode==='code'?'':'g'}" onclick="stockMode='code';go('stock')">Tổng theo mã hàng</button>
+   <a href="/export/stock.xlsx"><button class="b g">⬇ Excel tồn kho</button></a>
+   <a href="/export/ledger.xlsx"><button class="b g">⬇ Nhật ký trừ lùi</button></a></div><div id="gridbox"></div></div>`;
+  if(stockMode==='code'){
+    const d=await api('/api/stock/by-code');
+    d.forEach(r=>r.ton=r.nhap-r.xuat);
+    miniTable($('#gridbox'),[{k:'ma_key',l:'Mã hàng',t:'text'},{k:'ten_hang',l:'Tên hàng',t:'text',w:1},{k:'dvt',l:'ĐVT',t:'text'},{k:'dong',l:'Dòng nhập',t:'number'},{k:'nhap',l:'Nhập',t:'number'},{k:'xuat',l:'Xuất',t:'number'},{k:'ton',l:'Tồn',t:'number',b:1}],d,'ton');
+  }else{resetG(false);await mountGrid($('#gridbox'));}
+},
+async events(){
+  if(evId)return VIEWS.eventDetail();
+  const d=await api('/api/events');
+  $('#main').innerHTML=`<div class="panel"><div class="row"><h2 style="margin:0">Lô xuất</h2><button class="b" onclick="newEvent()">+ Tạo lô</button><button class="b g" onclick="rebuildPreview()">⟳ Tính lại thứ tự ưu tiên (C/O trước)</button></div>
+   <p class="mut">Bổ sung lô cũ, hoặc lô C/O đến sau lô XK? Bấm "Tính lại" để C/O được trừ trước các lô XK/MDK/tiêu huỷ như sổ Excel. Lô đã <b>cố định (đã nộp)</b> không bị thay đổi.</p>
+   <div id="rbbox"></div>
+   <div class="row" style="padding:8px;border:1px dashed var(--line);border-radius:8px"><b>Nhập lô từ Excel:</b><input type="file" id="emfile" accept=".xlsx,.xlsm"><button class="b g" onclick="emRead()">Đọc sheet "Export Material"</button><span class="mut">chỉ cần chọn file có sheet <b>Export Material</b> — hệ thống tự tìm sheet và lấy thông tin lô + danh sách NVL</span></div>
+   <div id="emlog"></div><div id="evtb"></div></div><div id="form"></div>`;
+  d.forEach(e=>{e.loai=KIND[e.kind];e.tt=e.status==='LOCKED'?(e.frozen?'Đã khoá · cố định':'Đã khoá'):'Nháp'});
+  miniTable($('#evtb'),[{k:'id',l:'ID',t:'number'},{k:'loai',l:'Loại',t:'text'},{k:'code',l:'Mã lô / INV',t:'text'},{k:'so_tk_xuat',l:'TK xuất',t:'text'},{k:'ngay_tk',l:'Ngày TK',t:'text'},{k:'ma_tp',l:'Thành phẩm',t:'text'},{k:'n_lines',l:'Số dòng NVL',t:'number'},{k:'tt',l:'Trạng thái',t:'text'}],d,'id');
+  $('#evtb').querySelectorAll('tbody tr').forEach(tr=>{tr.style.cursor='pointer';tr.onclick=()=>go('events',+tr.firstElementChild.textContent.replace(/\D/g,''))});
+},
+async eventDetail(){
+  const {event:e,plan,short,rows}=await api('/api/events/'+evId);
+  const L=e.status==='LOCKED';
+  const money=v=>v==null?'':Number(v).toLocaleString('vi-VN',{maximumFractionDigits:4});
+  let tot=0,noRate=0;
+  const body=rows.map(x=>{tot+=x.tri_gia_usd||0;if(x.so_tk&&x.don_gia_cif==null)noRate++;
+    if(x.is_short)return `<tr style="background:rgba(192,57,43,.12)"><td>${x.stt}</td><td>${esc(x.ma_hang)}</td><td class=n>${fmt(x.need)}</td><td colspan=5 class="bad"><b>THIẾU TỒN</b> — không có tờ khai nhập đủ điều kiện</td><td class="n bad">${fmt(x.qty)}</td><td colspan=3></td></tr>`;
+    return `<tr><td>${x.stt}</td><td>${esc(x.ma_hang)}</td><td class=n>${fmt(x.need)}</td><td>${esc(x.so_tk)}</td><td>${esc(x.ngay_tk_nhap)}</td><td title="${esc(x.ten_hang)}">${esc((x.ten_hang||'').slice(0,60))}</td><td>${esc(x.nuoc_xx)}</td><td>${esc(x.ma_hs)}</td>
+     <td class=n>${fmt(x.qty)}</td><td class=n title="${esc(x.rate_note||'')}">${x.don_gia_cif==null?'<span class=bad>—</span>':money(x.don_gia_cif)}${x.rate_note?' ⚠':''}</td><td class=n>${money(x.ty_gia_usd)}</td><td class=n>${money(x.tri_gia_usd)}</td></tr>`}).join('');
+  const f=(k,l)=>`<label>${l}<input id="f_${k}" value="${esc(e[k]??'')}" ${L&&!['co_so','co_ngay'].includes(k)?'disabled':''}></label>`;
+  $('#main').innerHTML=`<div class="panel"><div class="row"><button class="b g" onclick="go('events')">← Danh sách</button>
+   <h2 style="margin:0">${KIND[e.kind]} · ${esc(e.code)}</h2><span class="tag ${L?'ok':'warn'}">${L?'Đã khoá '+esc(e.locked_at):'Nháp — chưa ghi sổ'}</span>${e.frozen?'<span class="tag ok">Cố định — đã nộp</span>':''}${!e.nhap_tu&&!e.nhap_den?'<span class="tag warn">Chưa giới hạn ngày tờ khai nhập</span>':`<span class="tag">Trừ tờ khai nhập ${esc(e.nhap_tu||'…')} → ${esc(e.nhap_den||'…')}</span>`}
+   ${short?`<span class="tag bad">${short} mã thiếu tồn</span>`:`<span class="tag ok">Đủ tồn</span>`}</div>
+   <div class="grid2">${f('so_tk_xuat','Số TK xuất')}${f('ngay_tk','Ngày TK xuất')}${f('so_inv','Số INV')}${f('ngay_inv','Ngày INV')}${f('ma_tp','Mã thành phẩm')}${f('hs6','Mã HS 6 số')}${f('fob_usd','FOB (USD)')}${f('co_so','Số C/O')}${f('co_ngay','Ngày C/O')}${f('ten_hang','Tên hàng hoá (thành phẩm)')}${f('tieu_chi','Tiêu chí RVC (vd CTSH + ACU)')}${f('dvt_lo','ĐVT lô hàng')}<label>Số lượng lô<input value="${esc(e.qty_lo??'')}" disabled></label></div>
+   <div class="grid2" style="margin-top:8px;padding:8px;border:1px dashed var(--line);border-radius:8px">${f('nhap_tu','Trừ tờ khai nhập TỪ ngày (dd/mm/yyyy)')}${f('nhap_den','… ĐẾN ngày')}<span class="mut" style="align-self:end">Chỉ các tờ khai nhập có Ngày ĐK trong khoảng này mới bị trừ. Để trống = không giới hạn. Bấm "Lưu thông tin" để xem lại phương án.</span></div>
+   <div class="row" style="margin-top:12px">
+   ${L?`<button class="b g" onclick="saveHdr()">Lưu Số/Ngày C/O</button><button class="b g" onclick="freeze(${e.frozen?0:1})">${e.frozen?'Bỏ cố định':'Đánh dấu đã nộp (cố định)'}</button><button class="b d" onclick="unlock()">Huỷ khoá (trả tồn)</button>`:`<button class="b g" onclick="saveHdr(true)">Lưu thông tin</button><button class="b" onclick="lock(${short?'true':'false'})">${short?'Khoá dù thiếu tồn':'Khoá & ghi sổ'}</button><button class="b g" title="Dùng khi bổ sung lô cũ đã nộp hải quan / đã có C/O" onclick="lock(${short?'true':'false'},true)">Khoá &amp; đánh dấu đã nộp</button><button class="b d" onclick="delEvent()">Xoá lô</button>`}
+   <a href="/export/lot/${e.id}.xlsx"><button class="b g">⬇ Excel chi tiết lô</button></a>
+   ${e.kind==='CO'?`<button class="b" onclick="go('rvc',${e.id})">Xem form RVC</button>`:''}</div>
+   ${noRate?`<p class="bad">⚠ ${noRate} dòng chưa tính được Đơn giá CIF (thiếu tỷ giá USD hoặc đơn giá tính thuế).</p>`:''}
+   <p class="mut">Đơn giá CIF (USD) = Đơn giá tính thuế (VNĐ) ÷ tỷ giá hải quan USD/VNĐ của đúng ngày tờ khai nhập. Dòng có ⚠: ngày đó không có tỷ giá USD nên dùng ngày gần nhất trước đó (rê chuột để xem).</p>
+   <div class="scroll"><table><tr><th>STT</th><th>Mã hàng</th><th class=n>Nhu cầu</th><th>Tờ khai nhập</th><th>Ngày tờ khai</th><th>Tên hàng</th><th>Nước xuất xứ</th><th>Mã HS</th><th class=n>SL trừ</th><th class=n>Đơn giá CIF (USD)</th><th class=n>Tỷ giá USD/VNĐ</th><th class=n>Trị giá (USD)</th></tr>${body}
+   <tr><td colspan=11 class=n><b>Tổng trị giá (USD)</b></td><td class=n><b>${money(tot)}</b></td></tr></table></div></div>`;
+},
+co(){return ledgerView('CO')},xk(){return ledgerView('XK')},th(){return ledgerView('TH')},mdk(){return ledgerView('MDK')},
+async rvc(){
+  const evs=(await api('/api/events')).filter(e=>e.kind==='CO');
+  if(!evId&&evs.length)evId=evs[0].id;
+  $('#main').innerHTML=`<div class="panel noprint"><div class="row"><h2 style="margin:0">Form RVC — Phụ lục VIII</h2>
+   <select id="rvsel">${evs.map(e=>`<option value="${e.id}" ${e.id===evId?'selected':''}>${esc(e.code)} · ${esc(e.ngay_tk||'')} · ${e.status==='LOCKED'?'đã khoá':'nháp'}</option>`).join('')||'<option>Chưa có lô C/O</option>'}</select>
+   ${evId?`<a href="/export/rvc/${evId}.xlsx"><button class="b">⬇ Xuất Excel</button></a><button class="b g" onclick="window.print()">🖨 In</button><button class="b g" onclick="go('events',${evId})">Mở lô / sửa thông tin</button>`:''}</div>
+   <p class="mut">Form điền đúng theo mẫu sheet RVC trong sổ Excel của bạn: thông tin lô, định mức BOM và từng tờ khai nhập bị trừ. Lô nháp hiển thị phương án dự kiến (chưa ghi sổ).</p></div><div id="rvbox"></div>`;
+  if(!evId)return;$('#rvsel').onchange=e=>go('rvc',+e.target.value);
+  const d=await api('/api/rvc-html/'+evId);
+  $('#rvbox').innerHTML=`${d.shortfall_rows||d.missing_rate?`<p class="bad noprint">⚠ ${d.shortfall_rows} mã thiếu tồn, ${d.missing_rate} dòng chưa tính được đơn giá CIF.</p>`:''}
+   ${d.status!=='LOCKED'?'<p class="warn noprint">Lô nháp — đây là phương án dự kiến, chưa ghi sổ.</p>':''}
+   <div style="overflow:auto;background:#fff;padding:8px;border:1px solid var(--line);border-radius:8px">${d.html}</div>
+   <p class="mut noprint">Các cột Trị giá "Có / Không có xuất xứ FTA" và "C/O ưu đãi nhập khẩu" (Số, Ngày) để trống — điền tay trên file Excel sau khi xuất (dòng Cộng là công thức tự cộng). Tham khảo: tổng trị giá NVL theo đơn giá CIF = ${mny(d.total_usd)} USD (chi tiết từng dòng xem ở trang lô).</p>`;
+},
+async bom(){
+  if(evId)return VIEWS.bomDetail();
+  const list=await api('/api/boms');
+  $('#main').innerHTML=`<div class="panel"><div class="row"><h2 style="margin:0">BOM — định mức NVL cho thành phẩm</h2><button class="b" onclick="bomNew()">+ Tạo BOM</button><a href="/export/bom-template.xlsx"><button class="b g">⬇ File mẫu</button></a></div>
+   <p class="mut">BOM = số lượng NVL dùng cho <b>1 đơn vị thành phẩm</b> (Qty used in FG). Khi tạo lô C/O chỉ cần chọn BOM và số lượng lô, hệ thống tự tính nhu cầu NVL = định mức × số lượng lô.</p>
+   <div class="row"><input type="file" id="fbom" accept=".xlsx,.xlsm"><button class="b g" onclick="bomUpload(true)">Đọc sheet "BOM" &amp; kiểm tra</button><span class="mut">chọn file có sheet <b>BOM</b> (cả <b>BOM (2)</b>… nếu có — mỗi sheet là một thành phẩm); hoặc file bảng nhiều thành phẩm (xem file mẫu)</span></div>
+   <div id="bomlog"></div><div id="bomnew"></div><div id="bomtb"></div></div>`;
+  miniTable($('#bomtb'),[{k:'ma_tp',l:'Mã thành phẩm',t:'text',b:1},{k:'ten_hang',l:'Tên hàng hoá',t:'text',w:1},{k:'hs6',l:'Mã HS 6 số',t:'text'},{k:'n_lines',l:'Số dòng NVL',t:'number'},{k:'updated_at',l:'Cập nhật',t:'text'}],list,'ma_tp',{rowAttr:x=>` data-id="${x.id}"`});
+  $('#bomtb').querySelectorAll('tbody tr').forEach(tr=>{tr.style.cursor='pointer';tr.onclick=()=>go('bom',+tr.dataset.id)});
+},
+async bomDetail(){
+  const d=await api('/api/boms/'+evId);BD=d;
+  const b=d.bom;
+  $('#main').innerHTML=`<div class="panel"><div class="row"><button class="b g" onclick="go('bom')">← Danh sách BOM</button><h2 style="margin:0">BOM ${esc(b.ma_tp)}</h2>
+   <span class="tag ${d.max_lots>0?'ok':'bad'}">Với tồn hiện tại làm được tối đa ${d.max_lots==null?'—':fmt(d.max_lots)} lô C/O</span></div>
+   <div class="grid2"><label>Tên hàng hoá<input id="b_ten" value="${esc(b.ten_hang||'')}"></label><label>Mã HS 6 số<input id="b_hs" value="${esc(b.hs6||'')}"></label><label>ĐVT thành phẩm<input id="b_dvt" value="${esc(b.dvt||'')}"></label></div>
+   <div class="row" style="margin-top:10px"><button class="b" onclick="bomSave()">Lưu BOM</button><button class="b g" onclick="bomAddRow()">+ Thêm dòng NVL</button><button class="b g" onclick="bomPaste()">Dán từ Excel (thêm vào cuối)</button>
+   <button class="b g" onclick="preBom=${b.id};go('events');setTimeout(newEvent,200)">Tạo lô C/O từ BOM này</button><button class="b d" onclick="bomDel()">Xoá BOM</button></div>
+   <div id="bompaste"></div>
+   <div class="scroll"><table id="bomlines"></table></div>
+   <p class="mut">Cột "Tồn hiện tại" = tổng tồn của mã đó ở các tờ khai được phép trừ cho C/O (theo Cài đặt). "Lô tối đa" = tồn ÷ định mức.</p></div>`;
+  bomDraw();
+},
+async data(){
+  const log=await api('/api/import/log');
+  $('#main').innerHTML=`<div class="panel"><h2>Cập nhật dữ liệu tờ khai nhập (sheet 01_DATABASE)</h2>
+   <p class="mut">Chọn file Excel báo cáo tờ khai (dòng tiêu đề có "Số TK", "Mã hàng", "Số lượng", "Mã loại hình"…). Sau khi chọn file, bạn chọn <b>sheet chứa dữ liệu</b> (mặc định 01_DATABASE nếu có). Hệ thống lưu <b>tất cả các cột</b> của sheet để lọc.</p>
+   <div class="row"><input type="file" id="fdb" accept=".xlsx,.xlsm" onchange="dbPick()"><span id="dbsheet" class="mut">① Chọn file → ② chọn sheet chứa dữ liệu</span><button class="b" id="dbgo" onclick="dbPreview()" disabled>Xem trước &amp; kiểm tra dòng trùng</button></div>
+   <label class="row"><input type="checkbox" id="full" checked> File là <b>toàn bộ dữ liệu</b> (đồng bộ: dòng không còn trong file sẽ bị xoá, trừ dòng đã bị trừ lùi)</label>
+   <p class="mut">Bỏ chọn nếu file chỉ chứa dòng mới — chỉ thêm / cập nhật, không xoá gì. Dòng trùng trong file (cùng Số TK + Mã hàng + Số lượng + Đơn giá) sẽ được liệt kê để <b>bạn xác nhận giữ hay loại bỏ trước khi lưu</b>. Lô đã khoá không bị thay đổi.</p>
+   <div id="uplog"></div></div>
+   <div class="panel"><h2>Nạp lô cũ — đã biết chính xác tờ khai nhập bị trừ</h2>
+   <p class="mut">File Excel, mỗi dòng = một lần trừ: <b>Mã lô/INV · Loại · Số TK nhập · Mã hàng · Số lượng</b> (cột thông tin lô tuỳ chọn). Hệ thống trừ thẳng vào đúng tờ khai nhập đó (không dùng LIFO) và tạo lô đã khoá. Một mã hàng trừ từ nhiều TK thì viết nhiều dòng. <a href="/export/lots-template.xlsx">⬇ Tải file mẫu</a></p>
+   <div class="row"><input type="file" id="flot" accept=".xlsx,.xlsm"><label>Loại mặc định <select id="lkind"><option value="XK">Xuất khẩu</option><option value="CO">C/O</option><option value="MDK">Mục đích khác</option><option value="TH">Tiêu huỷ</option></select></label>
+   <label><input type="checkbox" id="lfrozen" checked> Cố định (đã nộp)</label><label><input type="checkbox" id="lrepl"> Thay thế lô cùng mã đã nạp</label>
+   <button class="b" onclick="lotPreview()">Tải lên &amp; kiểm tra</button></div><div id="lotlog"></div></div>
+   <div class="panel"><h2>Lịch sử nạp dữ liệu</h2><table><tr><th>Thời gian</th><th>File</th><th>Chế độ</th><th class=n>Dòng trong file</th><th class=n>Thêm</th><th class=n>Cập nhật</th><th class=n>Xoá</th><th class=n>Giữ (đã trừ)</th></tr>`+
+   (log.map(r=>`<tr><td>${esc(r.at)}</td><td>${esc(r.filename)}</td><td>${r.mode==='full'?'Đầy đủ':'Bổ sung'}</td><td class=n>${fmt(r.rows_in_file)}</td><td class=n>${fmt(r.added)}</td><td class=n>${fmt(r.updated)}</td><td class=n>${fmt(r.removed)}</td><td class=n>${fmt(r.kept)}</td></tr>`).join('')||'<tr><td colspan=8 class=mut>Chưa nạp lần nào</td></tr>')+`</table></div>
+   <div class="panel"><h2>Chuyển từ sổ Excel cũ (một lần)</h2>
+   <p class="mut">Lấy 01_DATABASE + BOM (thành lô C/O nháp) + Export Material (lô XK nháp) từ file sổ Excel. File lớn có thể mất 1–2 phút.</p>
+   <div class="row"><input type="file" id="fold" accept=".xlsx,.xlsm"><button class="b g" onclick="doUp('/api/import/legacy','fold')">Chuyển</button></div></div>`;
+},
+async settings(){
+  const s=(await api('/api/summary')).settings;
+  $('#main').innerHTML=`<div class="panel"><h2>Quy tắc trừ lùi</h2><div class="grid2">
+   <label>Thứ tự trừ<select id="s_order"><option ${s.order==='LIFO'?'selected':''}>LIFO</option><option ${s.order==='FIFO'?'selected':''}>FIFO</option></select></label>
+   <label>Loại hình trừ cho C/O<input id="s_types_co" value="${esc(s.types_co)}"></label>
+   <label>Loại hình trừ cho XK/MDK/TH<input id="s_types_other" value="${esc(s.types_other)}"></label>
+   <label>Tên thương nhân (form RVC)<input id="s_company" value="${esc(s.company)}"></label>
+   <label>Mã số thuế<input id="s_mst" value="${esc(s.mst)}"></label>
+   <label>Địa danh (chân form RVC)<input id="s_place" value="${esc(s.place)}"></label>
+   <label>Tiêu chí RVC mặc định<input id="s_tieu_chi" value="${esc(s.tieu_chi)}"></label>
+   <label>Ưu tiên khi tính lại<select id="s_priority"><option value="CO_FIRST" ${s.priority!=='CHRONO'?'selected':''}>Lô C/O trước (như Excel)</option><option value="CHRONO" ${s.priority==='CHRONO'?'selected':''}>Theo ngày TK xuất</option></select></label>
+   <label>Chỉ trừ tờ khai "Đã thông quan"<select id="s_only_cleared"><option value="0" ${s.only_cleared!=='1'?'selected':''}>Không (như Excel hiện tại)</option><option value="1" ${s.only_cleared==='1'?'selected':''}>Có — bỏ qua tờ khai Đã phân luồng</option></select></label>
+</div>
+   <div class="row" style="margin-top:10px"><button class="b" onclick="saveSettings()">Lưu</button></div>
+   <p class="mut">Đổi quy tắc chỉ ảnh hưởng các lô khoá sau này; lô đã khoá giữ nguyên.</p></div>`;
+  await fxPanel();
+}};
+
+async function doUp(p,id,isDb){const f=$('#'+id).files[0];if(!f)return toast('Chọn file trước',1);
+  const box=$('#uplog');if(box)box.innerHTML='<p class="warn">Đang đọc file và cập nhật… (file lớn mất khoảng 10–60 giây, đừng đóng trang)</p>';
+  try{const q=`?filename=${encodeURIComponent(f.name)}`+(isDb?`&full=${$('#full').checked?1:0}`:'');
+    const r=await upload(p+q,f);const d=r.database||r;
+    if(box)box.innerHTML=`<p class="ok"><b>Cập nhật xong.</b> ${fmt(d.rows_in_file)} dòng trong file — thêm <b>${fmt(d.added)}</b>, cập nhật <b>${fmt(d.updated)}</b>, không đổi ${fmt(d.unchanged)}, xoá <b>${fmt(d.removed)}</b>${d.kept_because_already_allocated?`, <span class="warn">giữ lại ${d.kept_because_already_allocated} dòng không còn trong file vì đã bị trừ lùi (kiểm tra)</span>`:''}.</p>`;
+    toast('Đã cập nhật dữ liệu')}catch(e){if(box)box.innerHTML='';toast(e.message,1)}}
+async function saveSettings(){const o={};['order','types_co','types_other','only_cleared','priority','company','mst','place','tieu_chi'].forEach(k=>o[k]=$('#s_'+k).value);await post('/api/settings',o);toast('Đã lưu')}
+function hdr(){const o={};['so_tk_xuat','ngay_tk','so_inv','ngay_inv','ma_tp','hs6','fob_usd','co_so','co_ngay','nhap_tu','nhap_den','ten_hang','tieu_chi','dvt_lo'].forEach(k=>{const e=$('#f_'+k);if(e)o[k]=e.value});return o}
+async function saveHdr(refresh){try{await post(`/api/events/${evId}/update`,hdr());toast('Đã lưu');if(refresh)go('events',evId)}catch(e){toast(e.message,1);throw e}}
+async function lock(allow,frozen){if(!confirm(frozen?'Ghi sổ và đánh dấu lô ĐÃ NỘP (cố định, không đổi khi tính lại)?':'Ghi sổ lô này? Tồn kho sẽ bị trừ.'))return;await saveHdr();
+  try{const r=await post(`/api/events/${evId}/lock`,{allow_shortfall:allow,frozen:!!frozen});toast('Đã khoá lô');await go('events',evId);
+    if(r.rebuild_pending&&confirm(`Lô này có ưu tiên cao hơn ${r.rebuild_pending} lô đã khoá khác (vd lô C/O đến sau lô XK). Xem phương án tính lại?`)){await go('events');rebuildPreview()}}catch(e){toast(e.message,1)}}
+async function freeze(v){await post(`/api/events/${evId}/freeze`,{frozen:!!v});go('events',evId)}
+async function rebuildPreview(){const r=await post('/api/rebuild/preview');
+  $('#rbbox').innerHTML=`<div class="panel" style="border-color:var(--warn)"><h2>Tính lại thứ tự ưu tiên — xem trước</h2><p>Xét ${r.lots_checked} lô đã khoá chưa cố định. ${r.changed.length?`<b>${r.changed.length} lô sẽ thay đổi phương án trừ</b> (tờ khai nhập bị trừ khác đi). Lô nào đã nộp hải quan / đã có C/O thì hãy đánh dấu <i>cố định</i> trước khi áp dụng.`:'Không có lô nào thay đổi.'}</p>
+   ${r.changed.length?`<table><tr><th>Lô</th><th>Loại</th><th>Ngày TK</th><th class=n>Dòng NVL đổi</th><th class=n>Thiếu trước</th><th class=n>Thiếu sau</th></tr>`+r.changed.map(c=>`<tr><td><a href="#" onclick="go('events',${c.id});return false">${esc(c.code)}</a></td><td>${KIND[c.kind]}</td><td>${esc(c.ngay_tk)}</td><td class=n>${c.lines_changed}</td><td class=n>${fmt(c.shortfall_before)}</td><td class="n ${c.shortfall_after>c.shortfall_before?'bad':''}">${fmt(c.shortfall_after)}</td></tr>`).join('')+'</table>':''}
+   <div class="row" style="margin-top:8px">${r.changed.length?'<button class="b" onclick="rebuildCommit()">Áp dụng tính lại</button>':''}<button class="b d" onclick="$(\'#rbbox\').innerHTML=\'\'">Đóng</button></div></div>`}
+async function rebuildCommit(){if(!confirm('Áp dụng? Phương án trừ của các lô liệt kê sẽ thay đổi.'))return;const r=await post('/api/rebuild/commit');toast(`Đã tính lại ${r.changed.length} lô`);go('events')}
+async function unlock(){if(!confirm('Huỷ khoá và trả lại tồn kho?'))return;await post(`/api/events/${evId}/unlock`);go('events',evId)}
+async function delEvent(){if(!confirm('Xoá lô nháp này?'))return;await post(`/api/events/${evId}/delete`);go('events')}
+async function newEvent(){
+  const boms=await api('/api/boms');
+  $('#form').innerHTML=`<div class="panel"><h2>Tạo lô mới</h2><div class="grid2">
+   <label>Loại<select id="n_kind"><option value="CO">C/O (BOM × số lượng lô)</option><option value="XK">Xuất khẩu</option><option value="MDK">Mục đích khác</option><option value="TH">Tiêu huỷ</option></select></label>
+   <label>Lấy định mức từ BOM (chỉ lô C/O)<select id="n_bom"><option value="">— không dùng BOM (dán danh sách bên dưới) —</option>${boms.map(b=>`<option value="${b.id}" ${b.id===preBom?'selected':''}>${esc(b.ma_tp)} · ${esc(b.ten_hang||'')} (${b.n_lines} NVL)</option>`).join('')}</select></label>
+   <label>Mã lô / số INV<input id="n_code" placeholder="VNOUT00732"></label>
+   <label>Số TK xuất<input id="n_tk"></label><label>Ngày TK xuất (dd/mm/yyyy)<input id="n_ntk"></label>
+   <label>Mã thành phẩm<input id="n_tp"></label><label>Số lượng lô (C/O)<input id="n_qty" value="1"></label>
+   <label>Mã HS 6 số<input id="n_hs"></label><label>FOB (USD)<input id="n_fob"></label>
+   <label>Trừ tờ khai nhập TỪ ngày (dd/mm/yyyy)<input id="n_from" placeholder="trống = không giới hạn"></label><label>… ĐẾN ngày<input id="n_to" placeholder="trống = không giới hạn"></label></div>
+   <p class="mut">Danh sách NVL — dán từ Excel, mỗi dòng: <b>Mã hàng ⇥ Mô tả (tuỳ chọn) ⇥ Qty ⇥ ĐVT (tuỳ chọn)</b>. Hoặc nhập 2 cột "Mã hàng, Qty".</p>
+   <textarea id="n_lines" rows="9" style="width:100%" placeholder="110-00063&#9;Cell 18650&#9;15&#9;EACH"></textarea>
+   <div class="row" style="margin-top:8px"><button class="b" onclick="createEvent()">Tạo lô nháp</button>
+   <span class="mut">hoặc tải file Excel (cột: Mã hàng, Qty/Số lượng, tuỳ chọn Item description, Unit):</span><input type="file" id="n_file" accept=".xlsx,.xlsm"><button class="b g" onclick="createFromFile()">Tạo từ file</button></div></div>`;
+}
+async function createFromFile(){const f=$('#n_file').files[0];if(!f||!$('#n_code').value.trim())return toast('Chọn file và nhập mã lô / số INV',1);
+  const m={kind:$('#n_kind').value,code:$('#n_code').value.trim(),so_tk_xuat:$('#n_tk').value,ngay_tk:$('#n_ntk').value,ma_tp:$('#n_tp').value,qty_lo:$('#n_qty').value,hs6:$('#n_hs').value,fob_usd:$('#n_fob').value,nhap_tu:$('#n_from').value,nhap_den:$('#n_to').value};
+  const qs=new URLSearchParams(Object.fromEntries(Object.entries(m).filter(([k,v])=>v)));
+  try{const r=await upload('/api/events/from-file?'+qs,f);go('events',r.id)}catch(e){toast(e.message,1)}}
+async function createEvent(){
+  const lines=$('#n_lines').value.split('\n').map(l=>l.split('\t').map(x=>x.trim())).filter(c=>c[0]).map(c=>{
+    const nums=c.map((x,i)=>[i,parseFloat(x.replace(/,/g,''))]).filter(([i,v])=>i>0&&!isNaN(v)&&/^[\d.,]+$/.test(c[i]));
+    const qi=nums.length?nums[0][0]:-1; if(qi<0)return null;
+    return {ma_hang:c[0],qty:nums[0][1],mo_ta:qi>=2?c[1]:null,dvt:c[qi+1]||null}}).filter(Boolean);
+  try{const r=await post('/api/events',{kind:$('#n_kind').value,code:$('#n_code').value.trim(),so_tk_xuat:$('#n_tk').value,ngay_tk:$('#n_ntk').value,
+    so_inv:$('#n_code').value.trim(),ma_tp:$('#n_tp').value,qty_lo:$('#n_qty').value,hs6:$('#n_hs').value,fob_usd:$('#n_fob').value,nhap_tu:$('#n_from').value,nhap_den:$('#n_to').value,bom_id:$('#n_kind').value==='CO'?($('#n_bom').value||null):null,lines});preBom=null;go('events',r.id)}catch(e){toast(e.message,1)}}
+nav();go((()=>{try{const p=localStorage.nvlPage;return TABS[p]?p:'home'}catch(e){return 'home'}})());
+</script>
+</body>
+</html>
